@@ -1,4 +1,4 @@
-# FBSearch - JCU SSJS (One file per folder)
+# FBSearch - JCU SSJS
 
 Each folder contains a single JS file named after the folder.
 Load them in this order to reproduce the full bundle:
