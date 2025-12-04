@@ -155,8 +155,8 @@ var Results = (function () {
     var b = Html.buffer();
     b.add('<div class="grid-12 bg-white border p-150 m-b-100">');
     b.add('<div class="col-6-lrg col-12">');
-    if (lvl.label) b.add('<div class="f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + ' p-b-025">' + Html.esc(lvl.label) + '</div>');
-    b.add('<a href="' + Html.esc(lt.link) + '"><h2 class=" p-b-150 m-t-0">' + Html.esc(lt.title) + '</h2></a>');
+    if (lvl.label) b.add('<div class="f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + ' p-b-100">' + Html.esc(lvl.label) + '</div>');
+    b.add('<a href="' + Html.esc(lt.link) + '"><h3 class=" p-b-150 m-t-0">' + Html.esc(lt.title) + '</h3></a>');
     if (desc) b.add('<p>' + Html.esc(desc) + '</p>');
     b.add('</div>');
     b.add('<div class="col-5-lrg col-12">');
@@ -168,10 +168,10 @@ var Results = (function () {
     }
     b.add('</div>');
     b.add('<div class="col-1-lrg col-12">');
-    b.add('<div class="f-uppercase f-overline btn secondary-two round-med bookmark-black-before flex space-evenly align-center p-l-050 p-r-050 p-b-0125 p-t-0125">Shortlist</div>');
+    b.add('<div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"><span class="d-none-med">compare</span></div>');
     b.add('</div>');
-    b.add('<div class="col-12"><p class="arrow-white-before ocean-2-bg flex flex-start f-bold m-0">');
-    b.add('<a href="' + Html.esc(lt.link) + '" class="m-l-100 f-primary-dark f-bold">View course</a>');
+    b.add('<div class="col-12"><p class="btn-cta m-0">');
+    b.add('<a href="' + Html.esc(lt.link) + '" class="f-primary-dark">View course</a>');
     b.add('</p></div></div>');
     return b.toString();
   }
@@ -194,12 +194,12 @@ var Results = (function () {
     var b = Html.buffer();
     b.add('<div class="col-12 col-4-lrg bg-white border p-150">');
     b.add('  <div class="p-b-100">');
-    b.add('    <div class="flex space-between align-center p-b-025">');
+    b.add('    <div class="flex flex-wrap space-between align-center p-b-100 gap-0125">');
     if (lvl.label) b.add('      <div class="f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + '">' + Html.esc(lvl.label) + '</div>');
     else b.add('      <div></div>');
-    b.add('      <div class="f-uppercase f-overline btn secondary-two round-med bookmark-black-before flex space-evenly align-center p-l-050 p-r-050 p-b-0125 p-t-0125">Shortlist</div>');
+    b.add('      <div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"><span class="d-none-med">compare</span></div>');
     b.add('    </div>');
-    b.add('    <a href="' + Html.esc(lt.link) + '"><h2 class=" p-b-150 m-t-0">' + Html.esc(lt.title) + '</h2></a>');
+    b.add('    <a href="' + Html.esc(lt.link) + '"><h3 class=" p-b-150 m-t-0">' + Html.esc(lt.title) + '</h3></a>');
     if (desc) b.add('    <p>' + Html.esc(desc) + '</p>');
     b.add('  </div>');
     if (facts.length) {
@@ -209,9 +209,9 @@ var Results = (function () {
       b.add('    </ul>');
       b.add('  </div>');
     }
-    b.add('  <div class="flex space-between align-center p-b-025">');
-    b.add('    <p class="arrow-white-before ocean-2-bg flex flex-start f-bold m-0">');
-    b.add('      <a href="' + Html.esc(lt.link) + '" class="m-l-100 f-primary-dark f-bold">View course</a>');
+    b.add('  <div class="flex flex-wrap space-between align-center p-b-100 gap-0125">');
+    b.add('    <p class="btn-cta m-0">');
+    b.add('      <a href="' + Html.esc(lt.link) + '" class="f-primary-dark">View course</a>');
     b.add('    </p>');
     b.add('  </div>');
     b.add('</div>');
@@ -235,12 +235,12 @@ var Results = (function () {
     var atar = firstNonEmptyArray(md.courseAtarCutoff);
     var b = Html.buffer();
     b.add('<div class="bg-white border p-150 flex flex-wrap space-between m-b-100 align-center">');
-    b.add('  <a class="m-b-0" href="' + Html.esc(lt.link) + '"><h2 class="m-t-0">' + Html.esc(lt.title) + '</h2></a>');
+    b.add('  <a class="m-b-0" href="' + Html.esc(lt.link) + '"><h3 class="m-t-0">' + Html.esc(lt.title) + '</h3></a>');
     b.add('  <div class="flex flex-wrap gap-200 align-center">');
     if (atar.length) b.add('    <span class="f-overline">ATAR ' + Html.esc(atar[0]) + '</span>');
     if (lvl.label) b.add('    <div class="p-l-025 f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + '">' + Html.esc(lvl.label) + '</div>');
-    b.add('    <div class="f-uppercase f-overline btn secondary-two round-med bookmark-black-before flex space-evenly align-center p-l-050 p-r-050 p-b-0125 p-t-0125">Shortlist</div>');
-    b.add('    <p class="arrow-white-before ocean-2-bg flex flex-start f-bold m-0"><a href="' + Html.esc(lt.link) + '" class="m-l-100 f-primary-dark f-bold">View Course</a></p>');
+    b.add('    <div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"><span class="d-none-med">compare</span></div>');
+    b.add('    <p class="btn-cta m-0"><a href="' + Html.esc(lt.link) + '" class="f-primary-dark">View Course</a></p>');
     b.add('  </div>');
     b.add('</div>');
     return b.toString();
@@ -321,17 +321,15 @@ var FeaturedFilters = (function () {
     var facetSlug = slug(facetName);
     var b = Html.buffer();
 
-    b.add('<div class="select-wrapper search-controls h-100 bg-white" data-featured-facet="' + Html.esca(facetName) + '">');
-    b.add('  <div style="position: relative;" class="w-100 h-100 border pointer no-select">');
-    b.add('    <div class="w-100 h-100">');
+    b.add('<div class=" no-select select-wrapper search-controls col-12 col-6-med col-2-lrg" data-featured-facet="' + Html.esca(facetName) + '">');
 
     // header - CLOSED by default (no "active")
-    b.add('      <div class="select-label-text active-label-text flex space-between pointer align-center h-100 plus-white ocean-2-bg p-r-050 p-l-050">');
-    b.add('        <div class="f-display-4">' + Html.esc(facetName) + '</div>');
+    b.add('      <div class="select-label-text active-label-text flex space-between align-center plus-black btn secondary-one">');
+    b.add('        <div class="f-display-4 f-bold">' + Html.esc(facetName) + '</div>');
     b.add('      </div>');
 
     // body wrapper - CLOSED inline styles + options in .d-none
-    b.add('      <div class="study-level-wrapper bg-white p-b-0" style="height: 0px; overflow: hidden;">');
+    b.add('      <div class="study-level-wrapper border-box bg-white p-b-0 m-t-100" style="width: 500px; height: 0px; overflow: hidden;">');
     b.add('        <div class="d-none">');
 
     var values = facet.allValues || [];
@@ -348,7 +346,7 @@ var FeaturedFilters = (function () {
       b.add(
         '          <div tabindex="0"' +
         ' data-' + facetSlug + '="' + Html.esca(slug(label)) + '"' +
-        ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text"' +
+        ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
         ' data-param-name="' + Html.esca(pair.name) + '"' +
         ' data-param-value="' + Html.esca(pair.value) + '"' +
         ' data-toggleurl="' + Html.esca(toggle) + '"' +
@@ -361,8 +359,6 @@ var FeaturedFilters = (function () {
     b.add('        </div>');
     b.add('      </div>');
 
-    b.add('    </div>');
-    b.add('  </div>');
     b.add('</div>');
     return b.toString();
   }
@@ -374,7 +370,7 @@ var FeaturedFilters = (function () {
     for (var i = 0; i < sd.facets.length; i++) byName[sd.facets[i].name] = sd.facets[i];
 
     var b = Html.buffer();
-    b.add('<div class="columns d-none-med ">');
+    b.add('<div class="columns d-none-lrg">');
     for (var k = 0; k < names.length; k++) {
       var fname = names[k];
       if (byName[fname]) b.add(block(byName[fname]));
@@ -393,9 +389,9 @@ var HeaderRow = (function () {
     var b = Html.buffer();
     b.add('<div class="flex space-apart p-b-250">');
     b.add(FeaturedFilters.render(sd, G));
-    b.add('<div class="search-controls h-100 bg-white"><div style="position: relative;" class="w-100 h-100 border pointer no-select"><div class="w-100 h-100">');
-    b.add('<button id="all-filters-button" class="btn special-three w-100 h-100 flex space-between pointer align-center filter-black p-r-050 p-l-050 border-none bg-white" aria-expanded="false">');
-    b.add('<div class="f-display-4">All Filters</div></button></div></div></div>');
+    b.add('<div id="all-filters-button" aria-expanded="false" class="search-controls w-100-sm btn secondary-one flex gap-100 space-between pointer align-center tune-black">');
+    b.add('<div class="f-display-4 f-bold">All Filters</div>');
+    b.add('</div>');
     b.add('</div>');
     return b.toString();
   }
@@ -404,13 +400,14 @@ var HeaderRow = (function () {
     var chips = SearchData.selectedChips(sd);
     if (!chips.length) return ""; // render nothing if no chips
     var b = Html.buffer();
+
     b.add('<div id="selected-filters" class="p-b-250">');
     b.add('<p class="f-uppercase">Selected filters</p>');
     b.add('<div class="columns align-center gap-050-column">');
     for (var i = 0; i < chips.length; i++) {
       b.add('<span class="btn special-three round-med border-none h-fc p-050 flex space-between align-center plus-black active">' + Html.esc(titleCaseLabel(chips[i].label)) + '</span>');
     }
-    b.add('<a class="f-underline external-disabled" href="?">Clear all</a>');
+    b.add('<a class="f-underline external-disabled" href="?" style="color:black;">Clear all</a>');
     b.add('</div></div>');
     return b.toString();
   }
@@ -505,15 +502,13 @@ var CountBar = (function () {
         selectedText = optionsMap[firstKey(optionsMap, "")] || "";
       }
     }
-    b.add('<div class="select-wrapper search-controls h-100 bg-white">');
-    b.add('  <div style="position: relative;" class="w-100 h-100 border pointer no-select">');
-    b.add('    <div class="w-100 h-100">');
-    b.add('      <div class="select-label-text active-label-text flex space-between pointer align-center h-100 plus-white ocean-2-bg p-r-050 p-l-050">');
+    b.add('<div class="no-select select-wrapper search-controls col-12 col-6-med col-2-lrg">');
+    b.add('      <div class="select-label-text active-label-text flex space-between align-center plus-black btn sm secondary-one">');
     b.add('        <div class="f-display-4">');
     b.add('          <span class="p-l-025 p-r-025">' + Html.esc(kind) + ': </span> <span>' + Html.esc(selectedText) + '</span>');
     b.add('        </div>');
     b.add('      </div>');
-    b.add('      <div class="study-level-wrapper bg-white p-b-0" style="height: 0px; overflow: hidden;">');
+    b.add('      <div class="study-level-wrapper border-box bg-white p-b-0" style="height: 0px; overflow: hidden;">');
     b.add('        <div class="d-none">');
     if (optionsMap) {
       for (var val in optionsMap)
@@ -528,8 +523,6 @@ var CountBar = (function () {
     }
     b.add('        </div>');
     b.add('      </div>');
-    b.add('    </div>');
-    b.add('  </div>');
     b.add('</div>');
     return b.toString();
   }
