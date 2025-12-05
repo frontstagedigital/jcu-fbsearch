@@ -1,4 +1,4 @@
-/* FBSearchUI v2.1 - Featured multiselect + robust Apply */
+/* FBSearchUI v2.2 - Featured multiselect + robust Apply + shared closer */
 (function () {
   var CFG = window.FBSearchUI || {};
   var DEBUG = !!window.FBSearchUI_DEBUG || !!CFG.debug;
@@ -64,7 +64,7 @@
     var seen = Object.create(null);
     var out = [];
     for (var i = 0; i < nodeList.length; i++) {
-      var nm = nodeList[i].name || "";
+      var nm = nodeList[i] && nodeList[i].name || "";
       if (!nm || seen[nm]) continue;
       seen[nm] = true;
       out.push(nm);
@@ -130,6 +130,19 @@
     if (typeof form.requestSubmit === "function") form.requestSubmit(); else form.submit();
   }
 
+  // shared closer for a single featured multiselect
+  function closeFeaturedMultiselect(root){
+    if (!root) return;
+    var body = root.querySelector('.study-level-wrapper');
+    if (body) {
+      body.style.height = "0px";
+      body.style.overflow = "hidden";
+      body.classList.remove("border");
+    }
+    var head = root.querySelector('.select-label-text');
+    if (head) head.classList.remove('active');
+  }
+
   function attach(form){
     log("init OK - featured multiselect + chip removal + apply");
 
@@ -188,6 +201,9 @@
         setHidden(form, cb.name, normalisePlusToSpace(cb.value || ""));
       }
 
+      // Optionally close the panel immediately for visual consistency
+      closeFeaturedMultiselect(wrapper);
+
       // Submit
       safeSubmit(form);
     }, true);
@@ -203,15 +219,7 @@
       var ms = cancel.closest('.multiselect');
       if (!ms) return;
 
-      var body = ms.querySelector('.study-level-wrapper');
-      if (body) {
-        body.style.height = "0px";
-        body.style.overflow = "hidden";
-        body.classList.remove("border");
-      }
-
-      var head = ms.querySelector('.select-label-text');
-      if (head) head.classList.remove('active');
+      closeFeaturedMultiselect(ms);
     }, true);
 
     // All Filters - Apply (modal)
