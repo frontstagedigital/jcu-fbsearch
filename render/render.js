@@ -96,15 +96,30 @@ var Results = (function () {
   function studyLevelInfo(result) {
     var md = (result && result.listMetadata) || {};
     var sl = firstNonEmptyArray(md.studyLevel);
-    var label = sl.length ? sl[0] : "";
-    var lower = (label || "").toLowerCase();
-    var colour = lower.indexOf("under") === 0 ? "square-blue-before" :
-      (lower.indexOf("post") === 0 || lower.indexOf("master") === 0 || lower.indexOf("graduate") === 0 ? "square-green-before" : "");
+    var raw = sl.length ? sl[0] : "";
+    var lower = String(raw || "").toLowerCase().replace(/\s+/g, " ");
+
+    // colour stays driven by the canonical lower-case value
+    var colour = lower.indexOf("under") === 0
+      ? "square-blue-before"
+      : (lower.indexOf("post") === 0 || lower.indexOf("master") === 0 || lower.indexOf("graduate") === 0
+          ? "square-green-before"
+          : "");
+
+    // display label - collapse variants like "post graduate", "post-grad" -> "Postgraduate"
+    function normaliseStudyLevelLabel(s) {
+      var l = String(s || "").toLowerCase().replace(/\s+/g, " ");
+      if (/^post[\s-]*grad(uate)?/.test(l)) return "Postgraduate";
+      if (/^under[\s-]*grad(uate)?/.test(l)) return "Undergraduate";
+      return titleCaseLabel(s);
+    }
+
     return {
-      label: label,
+      label: normaliseStudyLevelLabel(raw),
       colour: colour
     };
   }
+
 
 
   function quickFacts(result) {
