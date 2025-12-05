@@ -27,8 +27,11 @@
     return out;
   })();
 
-  // Selected filter chips selector
+  // Selected filter chips selector (individual removal)
   var selectedFilterSelector = CFG.selectedFilterSelector || "#selected-filters .btn.active, #selected-filters [data-remove-name][data-remove-value]";
+
+  // "Clear all" selector 
+  var clearAllSelector = CFG.clearAllSelector || "#selected-filters .f-underline, #selected-filters .clear-all, #selected-filters a[href='?']";
 
   var lastSubmitAt = 0;
   function now(){ return Date.now ? Date.now() : new Date().getTime(); }
@@ -266,7 +269,7 @@
       safeSubmit(form);
     }, true);
 
-    // Selected filter removal
+    // Selected filter removal (single chip)
     document.addEventListener("click", function (e) {
       var chip = e.target && e.target.closest(selectedFilterSelector);
       if (!chip) return;
@@ -298,6 +301,39 @@
           }
         }
       }
+
+      safeSubmit(form);
+    }, true);
+
+    // Selected filters - Clear all
+    document.addEventListener("click", function (e) {
+      var clear = e.target && e.target.closest(clearAllSelector);
+      if (!clear) return;
+
+      e.stopPropagation(); e.preventDefault();
+
+      // Pre-fill with current URL so we keep non-facet params (e.g. query, sort, ui_view)
+      applyQueryToForm(form, window.location.search);
+
+      // Remove all mirrored facet params (prefix "f.")
+      clearHiddenByPrefix(form, clearHiddenNamePrefix);
+
+      // Defensive: remove any non-hidden fields that might start with the facet prefix
+      var facetPrefixEsc = clearHiddenNamePrefix.replace(/[-[\]/{}()*+?.\\^$|]/g, "\\$&");
+      var stray = form.querySelectorAll('[name^="' + facetPrefixEsc + '"]');
+      for (var i = stray.length - 1; i >= 0; i--) stray[i].remove();
+
+      // Reset pagination back to first page
+      setHidden(form, "start_rank", "");
+
+      // Visually untick everything in UI so next open reflects reality
+      var modal = document.querySelector(modalRootSelector);
+      if (modal) {
+        var modalChecks = modal.querySelectorAll('input[type="checkbox"]');
+        for (var m = 0; m < modalChecks.length; m++) modalChecks[m].checked = false;
+      }
+      var featuredChecks = document.querySelectorAll('.multiselect input[type="checkbox"]');
+      for (var f = 0; f < featuredChecks.length; f++) featuredChecks[f].checked = false;
 
       safeSubmit(form);
     }, true);
