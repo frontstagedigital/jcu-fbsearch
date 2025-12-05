@@ -1,71 +1,124 @@
+/* FBSearchUI v2.1 - Featured multiselect + robust Apply */
 (function () {
-  // Config
   var CFG = window.FBSearchUI || {};
   var DEBUG = !!window.FBSearchUI_DEBUG || !!CFG.debug;
   function log(){ if (DEBUG && window.console) console.log.apply(console, ["[FBSearchUI]"].concat([].slice.call(arguments))); }
 
   var formSelector = CFG.formSelector || (CFG.formId ? ("#" + String(CFG.formId).replace(/^#/, "")) : "#bannerCourseSearchForm");
+  var preferToggleUrl = !!CFG.preferToggleUrl;                             // default false
+  var mirrorToggleUrlParams = CFG.mirrorToggleUrlParams !== false;         // default true
+  var mirrorFiltersFromModal = CFG.mirrorFiltersFromModal !== false;       // default true
   var modalRootSelector = CFG.modalRootSelector || "#filters-modal";
   var modalApplySelector = CFG.modalApplySelector || "#filters-apply";
-  var selectedFilterSelector = CFG.selectedFilterSelector || "#selected-filters .btn.active, #selected-filters [data-remove-name][data-remove-value]";
-  var stripParams = Array.isArray(CFG.stripParams) ? CFG.stripParams : ["profile","collection"];
+  var clearHiddenNamePrefix = typeof CFG.clearHiddenNamePrefix === "string" ? CFG.clearHiddenNamePrefix : "f.";
   var submitDebounceMs = typeof CFG.submitDebounceMs === "number" ? CFG.submitDebounceMs : 150;
 
-  // Helpers
+  // Important: ensure this is always an array
+  var stripParams = (function(){
+    if (Array.isArray(CFG.stripParams)) return CFG.stripParams;
+    if (typeof CFG.stripParams === "string") {
+      var parts = CFG.stripParams.split(",");
+      var out = [];
+      for (var i = 0; i < parts.length; i++) out.push(parts[i].trim());
+      return out;
+    }
+    return ["profile","collection"];
+  })();
+
+  // Selected filter chips selector - update if your markup differs
+  var selectedFilterSelector = CFG.selectedFilterSelector || "#selected-filters .btn.active, #selected-filters [data-remove-name][data-remove-value]";
+
+  // --- helpers ---
   var lastSubmitAt = 0;
   function now(){ return Date.now ? Date.now() : new Date().getTime(); }
+  function normalisePlusToSpace(s){ return s == null ? "" : String(s).replace(/\+/g, " "); }
 
-  function normalisePlusToSpace(s){
-    return s == null ? "" : String(s).replace(/\+/g, " ");
-  }
-
-  function cssEsc(s){
-    if (window.CSS && CSS.escape) return CSS.escape(s);
-    return String(s).replace(/([ !"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, "\\$1");
-  }
-
-  function appendHidden(form, name, value){
-    var h = document.createElement("input");
-    h.type = "hidden";
-    h.name = name;
-    h.value = value == null ? "" : String(value);
-    form.appendChild(h);
-  }
-
-  function removeInputsByName(form, name){
-    var nodes = form.querySelectorAll('input[name="' + cssEsc(name) + '"]');
-    for (var i = nodes.length - 1; i >= 0; i--) nodes[i].remove();
+  function setHidden(form, name, value){
+    var nodes = form.querySelectorAll('input[type="hidden"]');
+    var input = null;
+    for (var i = 0; i < nodes.length; i++){ if (nodes[i].name === name){ input = nodes[i]; break; } }
+    if (!input) { input = document.createElement("input"); input.type = "hidden"; input.name = name; form.appendChild(input); }
+    input.value = value == null ? "" : String(value);
   }
 
   function removeParams(form, keys){
     if (!keys || !keys.length) return;
     var nodes = form.querySelectorAll('input[name]');
     for (var i = nodes.length - 1; i >= 0; i--) {
-      if (keys.indexOf(nodes[i].name) !== -1) nodes[i].remove();
+      var n = nodes[i];
+      for (var k = 0; k < keys.length; k++) {
+        if (n.name === keys[k]) { n.remove(); break; }
+      }
     }
   }
 
+  function removeParamPair(form, name, value){
+    var nodes = form.querySelectorAll('input[name]');
+    for (var i = nodes.length - 1; i >= 0; i--) {
+      var n = nodes[i];
+      if (n.name === name && (value == null || n.value === value)) n.remove();
+    }
+  }
+
+  function uniqueNamesFromNodeList(nodeList){
+    var seen = Object.create(null);
+    var out = [];
+    for (var i = 0; i < nodeList.length; i++) {
+      var nm = nodeList[i].name || "";
+      if (!nm || seen[nm]) continue;
+      seen[nm] = true;
+      out.push(nm);
+    }
+    return out;
+  }
+
   // Parse a querystring or URL and apply params to the form, excluding keys
-  // Convert '+' to space before decodeURIComponent so values like "arts+and+social+sciences" decode correctly.
+  // Important: convert '+' to space before decodeURIComponent so values like "arts+and+social+sciences" decode correctly.
   function applyQueryToForm(form, qsOrUrl, extraExclusions){
     var exclude = Object.create(null);
-    (stripParams || []).forEach(function(k){ exclude[String(k)] = true; });
-    (extraExclusions || []).forEach && extraExclusions.forEach(function(k){ exclude[String(k)] = true; });
 
-    var search = qsOrUrl;
+    // stripParams (array) -> exclude map
+    for (var i = 0; i < stripParams.length; i++) exclude[String(stripParams[i])] = true;
+
+    // extraExclusions (maybe undefined) -> exclude map
+    if (extraExclusions && extraExclusions.length) {
+      for (var j = 0; j < extraExclusions.length; j++) exclude[String(extraExclusions[j])] = true;
+    }
+
+    var search = qsOrUrl || "";
     try { if (/^https?:/i.test(qsOrUrl)) search = new URL(qsOrUrl, window.location.href).search; } catch(e) {}
     if (!search) search = window.location.search || "";
     if (search.charAt(0) === "?") search = search.slice(1);
-    if (!search) return;
 
+    if (!search) return;
     var pairs = search.split("&");
-    for (var i = 0; i < pairs.length; i++) {
-      if (!pairs[i]) continue;
-      var kv = pairs[i].split("=");
+    for (var p = 0; p < pairs.length; p++) {
+      if (!pairs[p]) continue;
+      var kv = pairs[p].split("=");
       var k = kv[0] ? decodeURIComponent(kv[0].replace(/\+/g, " ")) : "";
       var v = kv.length > 1 ? decodeURIComponent(kv.slice(1).join("=").replace(/\+/g, " ")) : "";
       if (exclude[k]) continue;
-      appendHidden(form, k, v);
+      setHidden(form, k, v);
+    }
+  }
+
+  function updateControlLabel(optionEl){
+    var wrapper = optionEl.closest(".select-wrapper");
+    if (!wrapper) return;
+    var active = wrapper.querySelector(".active-label-text .f-display-4");
+    if (!active) return;
+    var labelSpan = optionEl.querySelector("span:last-child");
+    var label = (labelSpan ? labelSpan.textContent : optionEl.textContent || "").trim();
+    var spans = active.querySelectorAll("span");
+    if (spans.length >= 2) spans[spans.length - 1].textContent = label; else active.textContent = label;
+  }
+
+  function clearHiddenByPrefix(form, prefix){
+    if (!prefix) return;
+    var nodes = form.querySelectorAll('input[type="hidden"]');
+    for (var i = nodes.length - 1; i >= 0; i--) {
+      var n = nodes[i];
+      if (n.name && n.name.indexOf(prefix) === 0) n.remove();
     }
   }
 
@@ -77,173 +130,149 @@
     if (typeof form.requestSubmit === "function") form.requestSubmit(); else form.submit();
   }
 
-  function closeMultiselectFrom(node){
-    var multiselect = node && node.closest(".multiselect");
-    if (!multiselect) return;
+  function attach(form){
+    log("init OK - featured multiselect + chip removal + apply");
 
-    var body = multiselect.querySelector(".study-level-wrapper");
-    if (body) {
-      body.style.height = "0px";
-      body.style.overflow = "hidden";
-      body.classList.remove("border");
-    }
-
-    var header = multiselect.querySelector(".select-label-text");
-    if (header) {
-      header.classList.remove("active");
-    }
-  }
-
-  function boot(){
-    var form = document.querySelector(formSelector);
-    if (!form) {
-      if (DEBUG) console.warn("[FBSearchUI] Form not found:", formSelector);
-      return;
-    }
-
-    // Single-select: sort/view/featured items that carry data-param-*
+    // Featured/Simple option clicks - submit with preserved params
     document.addEventListener("click", function (e) {
       var option = e.target && e.target.closest('.select-wrapper .select-label-text[data-param-name][data-param-value]');
       if (!option) return;
       e.stopPropagation();
-      e.preventDefault();
 
+      var toggleUrl = option.getAttribute("data-toggleurl");
       var name = option.getAttribute("data-param-name");
       var rawValue = option.getAttribute("data-param-value");
       var value = normalisePlusToSpace(rawValue);
 
-      // Start with current URL params but exclude the param we will set
-      applyQueryToForm(form, window.location.search, name ? [name] : []);
-      // Replace any existing entries for this name
-      removeInputsByName(form, name);
-      appendHidden(form, name, value);
+      if (preferToggleUrl && toggleUrl) { e.preventDefault(); window.location.href = toggleUrl; return; }
 
+      // Pre-fill with current URL params
+      applyQueryToForm(form, window.location.search, name ? [name] : []);
+      if (mirrorToggleUrlParams && toggleUrl) applyQueryToForm(form, toggleUrl, name ? [name] : []);
+
+      if (name) setHidden(form, name, value);
+
+      // Optional: reset pagination when sort/view changes
+      // if (name === "sort" || name === "ui_view") setHidden(form, "start_rank", "");
+
+      updateControlLabel(option);
+      e.preventDefault();
       safeSubmit(form);
     }, true);
 
-    // Shared Apply button handler - branches by context
+    // Featured multiselect - Apply button scoped to the open multiselect panel
     document.addEventListener("click", function (e) {
-      var applyBtn = e.target && e.target.closest(modalApplySelector);
-      if (!applyBtn) return;
+      var btn = e.target && e.target.closest('.multiselect button#filters-apply, .multiselect [data-featured-apply]');
+      if (!btn) return;
+
       e.stopPropagation();
       e.preventDefault();
 
-      var inMultiselect = !!applyBtn.closest(".multiselect");
-      var inModal = !!applyBtn.closest(modalRootSelector);
+      var wrapper = btn.closest('.multiselect');
+      if (!wrapper) return;
 
-      // Always start by mirroring current URL params so we preserve unrelated state
+      // Start from current URL
       applyQueryToForm(form, window.location.search);
 
-      if (inMultiselect) {
-        // Featured Filters multiselect:
-        // - collect only checkboxes inside this multiselect
-        // - remove existing hidden inputs for just those names, then re-add checked ones
-        var wrapper = applyBtn.closest(".multiselect");
-        var checks = wrapper.querySelectorAll('input[type="checkbox"]');
+      // Collect all checked boxes in THIS featured multiselect only
+      var checks = wrapper.querySelectorAll('input[type="checkbox"]:checked');
 
-        // Build a set of names present in this wrapper
-        var namesInWrapper = {};
-        for (var i = 0; i < checks.length; i++) {
-          var n = checks[i].name;
-          if (n) namesInWrapper[n] = true;
-        }
+      // Remove previous mirrors only for names present in this wrapper
+      var namesToClear = uniqueNamesFromNodeList(wrapper.querySelectorAll('input[type="checkbox"]'));
+      for (var c = 0; c < namesToClear.length; c++) removeParamPair(form, namesToClear[c], null);
 
-        // Remove any hidden inputs for these names (to avoid duplicates)
-        Object.keys(namesInWrapper).forEach(function(nm){
-          removeInputsByName(form, nm);
-        });
-
-        // Re-add only the checked ones
-        for (var j = 0; j < checks.length; j++) {
-          var c = checks[j];
-          if (c.checked && c.name) {
-            appendHidden(form, c.name, normalisePlusToSpace(c.value || ""));
-          }
-        }
-
-        // Close the multiselect body
-        closeMultiselectFrom(applyBtn);
-        safeSubmit(form);
-        return;
+      // Mirror all checked boxes
+      for (var i = 0; i < checks.length; i++) {
+        var cb = checks[i];
+        if (!cb.name) continue;
+        setHidden(form, cb.name, normalisePlusToSpace(cb.value || ""));
       }
 
-      if (inModal) {
-        // All Filters modal
-        var modal = document.querySelector(modalRootSelector);
-        if (modal) {
-          // Gather all modal checkboxes
-          var checks = modal.querySelectorAll('input[type="checkbox"]');
-
-          // Build a set of names found in the modal
-          var namesInModal = {};
-          for (var k = 0; k < checks.length; k++) {
-            var nm = checks[k].name;
-            if (nm) namesInModal[nm] = true;
-          }
-
-          // Remove any existing hidden inputs for those names
-          Object.keys(namesInModal).forEach(function(nm){
-            removeInputsByName(form, nm);
-          });
-
-          // Add back only the checked ones
-          for (var m = 0; m < checks.length; m++) {
-            var ck = checks[m];
-            if (ck.checked && ck.name) {
-              appendHidden(form, ck.name, normalisePlusToSpace(ck.value || ""));
-            }
-          }
-        }
-
-        safeSubmit(form);
-        return;
-      }
-
-      // Fallback: if #filters-apply is clicked outside known contexts, just submit preserved params
+      // Submit
       safeSubmit(form);
     }, true);
 
-    // Featured Filters multiselect - Cancel
+    // Featured multiselect - Cancel button closes the dropdown and resets styles
     document.addEventListener("click", function (e) {
-      var cancel = e.target && e.target.closest(".multiselect .cancel-button");
+      var cancel = e.target && e.target.closest('.multiselect .cancel-button');
       if (!cancel) return;
+
       e.stopPropagation();
       e.preventDefault();
-      closeMultiselectFrom(cancel);
+
+      var ms = cancel.closest('.multiselect');
+      if (!ms) return;
+
+      var body = ms.querySelector('.study-level-wrapper');
+      if (body) {
+        body.style.height = "0px";
+        body.style.overflow = "hidden";
+        body.classList.remove("border");
+      }
+
+      var head = ms.querySelector('.select-label-text');
+      if (head) head.classList.remove('active');
     }, true);
 
-    // Selected filter chip removal (if you have chips)
+    // All Filters - Apply (modal)
+    document.addEventListener("click", function (e) {
+      var applyBtn = e.target && e.target.closest(modalApplySelector);
+      // If the click was handled by the featured multiselect handler above, bail out
+      if (!applyBtn || applyBtn.closest('.multiselect')) return;
+
+      e.stopPropagation(); e.preventDefault();
+
+      // Start from current URL
+      applyQueryToForm(form, window.location.search);
+
+      // Mirror modal selections
+      if (mirrorFiltersFromModal) {
+        var modal = document.querySelector(modalRootSelector);
+        if (modal) {
+          clearHiddenByPrefix(form, clearHiddenNamePrefix);
+          var checks = modal.querySelectorAll('input[type="checkbox"]:checked');
+          for (var i = 0; i < checks.length; i++) {
+            var c = checks[i];
+            if (!c.name) continue;
+            var h = document.createElement("input");
+            h.type = "hidden";
+            h.name = c.name;
+            h.value = normalisePlusToSpace(c.value || "");
+            form.appendChild(h);
+          }
+        }
+      }
+
+      safeSubmit(form);
+    }, true);
+
+    // Selected filter removal
     document.addEventListener("click", function (e) {
       var chip = e.target && e.target.closest(selectedFilterSelector);
       if (!chip) return;
-      e.stopPropagation();
-      e.preventDefault();
-
-      // Rebuild form from current URL first
-      applyQueryToForm(form, window.location.search);
+      e.stopPropagation(); e.preventDefault();
 
       var remName = chip.getAttribute("data-remove-name") || chip.getAttribute("data-param-name");
-      var remVal  = chip.getAttribute("data-remove-value") || chip.getAttribute("data-param-value");
+      var remVal = chip.getAttribute("data-remove-value") || chip.getAttribute("data-param-value");
+      var toggleUrl = chip.getAttribute("data-toggleurl");
+
+      if (preferToggleUrl && toggleUrl) { window.location.href = toggleUrl; return; }
+
+      applyQueryToForm(form, window.location.search);
 
       if (remName) {
         if (remVal != null && remVal !== "") {
-          // Remove specific name=value pairs
-          var nodes = form.querySelectorAll('input[name="' + cssEsc(remName) + '"]');
-          for (var i = nodes.length - 1; i >= 0; i--) {
-            if (nodes[i].value === normalisePlusToSpace(remVal)) nodes[i].remove();
-          }
+          removeParamPair(form, remName, normalisePlusToSpace(remVal));
         } else {
-          // Remove all with this name
-          removeInputsByName(form, remName);
+          removeParamPair(form, remName, null);
         }
       } else {
-        // Fallback: try to match plain text to f.* values
-        var text = (chip.textContent || "").trim().toLowerCase();
+        var text = (chip.textContent || "").trim();
         if (text) {
-          var all = form.querySelectorAll('input[name]');
-          for (var j = all.length - 1; j >= 0; j--) {
-            var n = all[j];
-            if (n.name && n.name.indexOf("f.") === 0 && n.value.trim().toLowerCase() === text) {
+          var nodes = form.querySelectorAll('input[name]');
+          for (var i = nodes.length - 1; i >= 0; i--) {
+            var n = nodes[i];
+            if (n.name && n.name.indexOf("f.") === 0 && n.value.trim().toLowerCase() === text.toLowerCase()) {
               n.remove();
             }
           }
@@ -252,13 +281,18 @@
 
       safeSubmit(form);
     }, true);
-
-    log("init OK");
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
+  function boot(){
+    var form = document.querySelector(formSelector);
+    if (form) { attach(form); return; }
+    var tries = 0, maxTries = 20;
+    var t = setInterval(function(){
+      form = document.querySelector(formSelector);
+      if (form) { clearInterval(t); attach(form); }
+      else if (++tries >= maxTries) { clearInterval(t); if (DEBUG && window.console) console.warn("[FBSearchUI] Form not found:", formSelector); }
+    }, 150);
   }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 })();
