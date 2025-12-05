@@ -438,7 +438,7 @@ var HeaderRow = (function () {
         '</span>'
       );
     }
-    b.add('<span class="f-underline">Clear all</span>');
+    b.add('<span class="f-underline pointer">Clear all</span>');
     b.add('</div>');
 
     return b.toString();
