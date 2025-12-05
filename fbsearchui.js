@@ -61,7 +61,7 @@
   }
 
   // Parse a querystring or URL and apply params to the form, excluding keys
-  // Important: convert '+' to space before decodeURIComponent so values like "arts+and+social+sciences" decode correctly.
+  // Convert '+' to space before decodeURIComponent so values like "arts+and+social+sciences" decode correctly.
   function applyQueryToForm(form, qsOrUrl, extraExclusions){
     var exclude = Object.create(null);
     (stripParams || []).forEach(function(k){ exclude[String(k)] = true; });
@@ -108,10 +108,14 @@
     var multiselect = node && node.closest(".multiselect");
     if (!multiselect) return;
     var body = multiselect.querySelector(".study-level-wrapper");
-    if (!body) return;
-    body.style.height = "0px";
-    body.style.overflow = "hidden";
-    body.classList.remove("border"); // ensure the border class is removed on close
+    if (body) {
+      body.style.height = "0px";
+      body.style.overflow = "hidden";
+      body.classList.remove("border");
+    }
+    // Also remove 'active' on the parent header
+    var header = multiselect.querySelector(".select-label-text");
+    if (header) header.classList.remove("active");
   }
 
   function safeSubmit(form){
@@ -206,7 +210,7 @@
       var cancel = e.target && e.target.closest(".multiselect .cancel-button");
       if (!cancel) return;
       e.stopPropagation(); e.preventDefault();
-      closeStudyLevelWrapper(cancel); // height:0, overflow:hidden, remove 'border'
+      closeStudyLevelWrapper(cancel); // height:0, overflow:hidden, remove 'border', remove 'active'
     }, true);
 
     // Selected filter chip removal
