@@ -48,8 +48,10 @@ var Facets = (function () {
     for (var i = 0; i < values.length; i++) {
       var v = values[i];
       var label = v && v.label;
+      var dataValue = (v && v.data) ? v.data : label;
       if (!label) continue;
-      var enc = encodeFacetLabel(label, name, api);
+      //var enc = encodeFacetLabel(label, name, api);
+      var enc = encodeURIComponent(String(dataValue)).replace(/%20/g, "+");
       var toUse = (facetMap[name] && facetMap[name][label]) || qsp;
       var encParam = String(toUse).replace(/ /g, "+").replace(/\|/g, "%7C");
       labels[label] = {

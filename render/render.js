@@ -354,7 +354,8 @@ var FeaturedFilters = (function () {
           '>'
         );
         b.add('        <label class="pointer d-block">');
-        b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(label) + '"' + checkedAttr + '>');
+        //b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(label) + '"' + checkedAttr + '>');\
+        b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(pair.value || label) + '"' + checkedAttr + '>');
         b.add('          <span>' + Html.esc(titleCaseLabel(label)) + '</span>');
         b.add('        </label>');
         b.add('      </div>');
@@ -457,28 +458,64 @@ var FiltersModal = (function () {
     return String(n).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   }
 
+  // local helper to match the encoding used in URLs: spaces -> '+'
+  function encodeForParam(val) {
+    return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
+  }
+
   function section(facet) {
     var id = idFromName(facet.name);
     var b = Html.buffer();
+
     b.add('<div class="border-bottom m-b-0 p-b-0">');
-    b.add('<button class="flex space-between w-100 btn-no-style plus-black pointer m-b-0 p-b-150 p-t-150" aria-expanded="false" aria-controls="' + id + '-content">');
-    b.add('<h3 class="m-0">' + Html.esc(facet.name) + '</h3></button>');
+    b.add(
+      '<button class="flex space-between w-100 btn-no-style plus-black pointer m-b-0 p-b-150 p-t-150" ' +
+      'aria-expanded="false" aria-controls="' + id + '-content">' +
+      '<h3 class="m-0">' + Html.esc(facet.name) + '</h3></button>'
+    );
     b.add('<div id="' + id + '-content" class="p-t-100" style="display: none;">');
 
     var values = facet.allValues || [];
     for (var i = 0; i < values.length; i++) {
-      var v = values[i];
-      var label = v.label;
+      var v = values[i] || {};
+      var label = v.label || "";
+      if (!label) continue;
+
+      // Prefer the precomputed queryParam (built using v.data when present)
       var ld = (facet.labels && facet.labels[label]) || {};
       var qsp = ld.queryParam || "";
-      // decode param name from left side of qsp; value from right side
-      var idx = qsp.indexOf("=");
-      var pName = idx > -1 ? decodeURIComponent(qsp.slice(0, idx).replace(/\+/g, " ").replace(/%7C/g, "|")) : "";
-      var pVal = idx > -1 ? qsp.slice(idx + 1) : "";
+
+      // Parse name and value from queryParam if available
+      var pName = "";
+      var pValEncoded = "";
+
+      if (qsp) {
+        var eq = qsp.indexOf("=");
+        if (eq > -1) {
+          // LHS: decode '+' to space and %7C to '|'
+          pName = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+          // RHS: keep encoded token as-is so it round-trips correctly
+          pValEncoded = qsp.slice(eq + 1);
+        }
+      }
+
+      // Fallbacks if labels[...].queryParam is missing:
+      if (!pName) {
+        // Try to infer a param name from the facet itself (same logic as elsewhere)
+        // Use an explicit facet.paramName if you add one upstream, otherwise default to a namespaced guess.
+        pName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+      }
+      if (!pValEncoded) {
+        // Submit the machine value when present, otherwise the label
+        var submitVal = (v.data != null && v.data !== "") ? v.data : label;
+        pValEncoded = encodeForParam(submitVal);
+      }
+
       var checked = v.selected ? ' checked="checked"' : "";
 
+      // Use label for display, value token for submission
       b.add('<div class="p-b-075"><label class="flex align-center gap-050-column pointer">');
-      b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pVal || label) + '"' + checked + '>');
+      b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
       b.add('<span>' + Html.esc(titleCaseLabel(label)) + '</span>');
       b.add('</label></div>');
     }
@@ -497,7 +534,7 @@ var FiltersModal = (function () {
     b.add('<section style="flex-shrink: 0;">');
     b.add('<div class="flex space-between align-center p-t-100 p-b-100"><h2 class="m-0">All Filters</h2><button id="close-filters-button" class="btn btn-no-style m-b-0" data-panel="close-filters">Close</button></div>');
     b.add('</section>');
-    
+
     b.add('<section id="filters-scrollable-section" class="overflow_y-auto overflow_x-h flex-1">');
     for (var i = 0; i < sd.facets.length; i++) b.add(section(sd.facets[i]));
     b.add('</section>');
@@ -512,10 +549,10 @@ var FiltersModal = (function () {
     b.add('</div></div></div></div></div>');
     return b.toString();
   }
-  return {
-    render: render
-  };
+
+  return { render: render };
 })();
+
 
 /* === render/count-bar.js === */
 var CountBar = (function () {
