@@ -1,4 +1,4 @@
-/* FBSearchUI v2.2 - Featured multiselect + robust Apply + shared closer */
+/* FBSearchUI v2.3 - Featured multiselect + robust Apply + shared closer + header toggle */
 (function () {
   var CFG = window.FBSearchUI || {};
   var DEBUG = !!window.FBSearchUI_DEBUG || !!CFG.debug;
@@ -130,21 +130,59 @@
     if (typeof form.requestSubmit === "function") form.requestSubmit(); else form.submit();
   }
 
-  // shared closer for a single featured multiselect
+  // open/close helpers for featured multiselect
+  function openFeaturedMultiselect(root){
+    if (!root) return;
+    var body = root.querySelector('.study-level-wrapper');
+    var head = root.querySelector('.select-label-text');
+    if (!body || !head) return;
+
+    // reveal inner content if present
+    var inner = body.firstElementChild;
+    if (inner && inner.classList.contains('d-none')) inner.classList.remove('d-none');
+
+    // set height to content for visibility (single click)
+    body.style.height = body.scrollHeight + "px";
+    body.style.overflow = "visible";
+    body.classList.add("border");
+    head.classList.add("active");
+  }
+
   function closeFeaturedMultiselect(root){
     if (!root) return;
     var body = root.querySelector('.study-level-wrapper');
+    var head = root.querySelector('.select-label-text');
     if (body) {
       body.style.height = "0px";
       body.style.overflow = "hidden";
       body.classList.remove("border");
+      // hide inner again to match initial state
+      var inner = body.firstElementChild;
+      if (inner && !inner.classList.contains('d-none')) inner.classList.add('d-none');
     }
-    var head = root.querySelector('.select-label-text');
     if (head) head.classList.remove('active');
   }
 
+  function toggleFeaturedMultiselect(root){
+    if (!root) return;
+    var body = root.querySelector('.study-level-wrapper');
+    if (!body) return;
+    var open = body.style.height && body.style.height !== "0px";
+    if (open) closeFeaturedMultiselect(root); else openFeaturedMultiselect(root);
+  }
+
   function attach(form){
-    log("init OK - featured multiselect + chip removal + apply");
+    log("init OK - featured multiselect + chip removal + apply + header toggle");
+
+    // Header toggle for featured multiselect - fixes double-click to reopen
+    document.addEventListener("click", function(e){
+      var head = e.target && e.target.closest('.multiselect .active-label-text');
+      if (!head) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var root = head.closest('.multiselect');
+      toggleFeaturedMultiselect(root);
+    }, true);
 
     // Featured/Simple option clicks - submit with preserved params
     document.addEventListener("click", function (e) {
@@ -165,10 +203,9 @@
 
       if (name) setHidden(form, name, value);
 
-      // Optional: reset pagination when sort/view changes
-      // if (name === "sort" || name === "ui_view") setHidden(form, "start_rank", "");
-
+      // update visible label for the control
       updateControlLabel(option);
+
       e.preventDefault();
       safeSubmit(form);
     }, true);
@@ -201,7 +238,7 @@
         setHidden(form, cb.name, normalisePlusToSpace(cb.value || ""));
       }
 
-      // Optionally close the panel immediately for visual consistency
+      // Close for visual consistency
       closeFeaturedMultiselect(wrapper);
 
       // Submit
