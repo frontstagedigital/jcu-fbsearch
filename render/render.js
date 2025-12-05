@@ -298,53 +298,67 @@ var FeaturedFilters = (function () {
   }
 
   function splitQsp(qsp) {
-    if (!qsp || typeof qsp !== "string") return {
-      name: "",
-      value: ""
-    };
+    if (!qsp || typeof qsp !== "string") return { name: "", value: "" };
     var i = qsp.indexOf("=");
-    if (i < 0) return {
-      name: "",
-      value: ""
-    };
+    if (i < 0) return { name: "", value: "" };
     var rawName = qsp.slice(0, i);
     var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/g, "|"));
     var value = qsp.slice(i + 1);
-    return {
-      name: name,
-      value: value
-    };
+    return { name: name, value: value };
   }
 
-  function block(facet) {
-    var facetName = facet.name;
-    var facetSlug = slug(facetName);
-    var b = Html.buffer();
+function block(facet) {
+  var facetName = facet.name;
+  var facetSlug = slug(facetName);
+  var isMulti = (facet.guessedDisplayType === "CHECKBOX"); // switch here
+  var b = Html.buffer();
 
-    b.add('<div class=" no-select select-wrapper search-controls col-12 col-6-med col-2-lrg" data-featured-facet="' + Html.esca(facetName) + '">');
+  // wrapper - add "multiselect" class only for checkbox facets
+  b.add(
+    '<div class="' + (isMulti ? 'multiselect ' : '') +
+    'no-select select-wrapper search-controls col-12 col-6-med col-2-lrg" data-featured-facet="' +
+    Html.esca(facetName) + '">'
+  );
 
-    // header - CLOSED by default (no "active")
-    b.add('      <div class="select-label-text active-label-text flex space-between align-center plus-black btn secondary-one">');
-    b.add('        <div class="f-display-4 f-bold">' + Html.esc(facetName) + '</div>');
-    b.add('      </div>');
+  // header
+  b.add('  <div class="select-label-text active-label-text flex space-between align-center plus-black btn secondary-one">');
+  b.add('    <div class="f-display-4 f-bold">' + Html.esc(facetName) + '</div>');
+  b.add('  </div>');
 
-    // body wrapper - CLOSED inline styles + options in .d-none
-    b.add('      <div class="study-level-wrapper border-box bg-white p-b-0 m-t-100" style="width: 500px; height: 0px; overflow: hidden;">');
-    b.add('        <div class="d-none">');
+  // body wrapper - CLOSED by default; options rendered inside a hidden inner div
+  b.add('  <div class="study-level-wrapper border-box bg-white p-b-0 m-t-100" style="width: 500px; height: 0px; overflow: hidden;">');
 
-    var values = facet.allValues || [];
-    for (var i = 0; i < values.length; i++) {
-      var v = values[i];
-      if (!v || !v.label) continue;
+  // for multi we follow your provided structure using a "max-width" container; for single we keep "d-none"
+  b.add('    <div class="' + (isMulti ? 'max-width d-none' : 'd-none') + '">');
 
-      var label = v.label;
-      var ld = (facet.labels && facet.labels[label]) || {};
-      var qsp = ld.queryParam || "";
-      var toggle = ld.toggleUrl || "";
-      var pair = splitQsp(qsp);
+  var values = facet.allValues || [];
+  for (var i = 0; i < values.length; i++) {
+    var v = values[i];
+    if (!v || !v.label) continue;
 
+    var label = v.label;
+    var ld = (facet.labels && facet.labels[label]) || {};
+    var qsp = ld.queryParam || "";
+    var toggle = ld.toggleUrl || "";
+    var pair = splitQsp(qsp); // { name, value } where name is "f.X|Y" and value is url-encoded
+
+    if (isMulti) {
+      // MULTI - checkbox rows (value supplied as the human label)
       b.add(
-        '          <div tabindex="0"' +
+        '      <div tabindex="0"' +
+        ' data-' + facetSlug + '="' + Html.esca(slug(label)) + '"' +
+        ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
+        '>'
+      );
+      b.add('        <label class="pointer d-block">');
+      b.add('          <input type="checkbox" name="' + Html.esca(pair.name) + '" value="' + Html.esca(label) + '">');
+      b.add('          <span>' + Html.esc(titleCaseLabel(label)) + '</span>');
+      b.add('        </label>');
+      b.add('      </div>');
+    } else {
+      // SINGLE - your original clickable rows
+      b.add(
+        '      <div tabindex="0"' +
         ' data-' + facetSlug + '="' + Html.esca(slug(label)) + '"' +
         ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
         ' data-param-name="' + Html.esca(pair.name) + '"' +
@@ -352,16 +366,28 @@ var FeaturedFilters = (function () {
         ' data-toggleurl="' + Html.esca(toggle) + '"' +
         '>'
       );
-      b.add('            ' + Html.esc(titleCaseLabel(label)));
-      b.add('          </div>');
+      b.add('        ' + Html.esc(titleCaseLabel(label)));
+      b.add('      </div>');
     }
-
-    b.add('        </div>');
-    b.add('      </div>');
-
-    b.add('</div>');
-    return b.toString();
   }
+
+  // multi facets include Apply/Cancel buttons area, per your example
+  if (isMulti) {
+    b.add('      <section class="search-filter-buttons flex-shrink-0 col-12">');
+    b.add('        <div class="flex gap-050 p-t-100 p-l-050 p-r-050 p-b-050">');
+    b.add('          <button class="btn m-b-0 w-100" id="filters-apply">Apply</button>');
+    b.add('          <button class="cancel-button btn secondary-two m-b-0 w-100">Cancel</button>');
+    b.add('        </div>');
+    b.add('      </section>');
+  }
+
+  b.add('    </div>'); // end inner container
+  b.add('  </div>');   // end body wrapper
+  b.add('</div>');     // end facet wrapper
+
+  return b.toString();
+}
+
 
   function render(sd, G) {
     var names = (G && G.featuredFacetNames) || [];
@@ -378,10 +404,12 @@ var FeaturedFilters = (function () {
     b.add('</div>');
     return b.toString();
   }
-  return {
-    render: render
-  };
+
+  return { render: render };
 })();
+
+
+
 
 /* === render/header-row.js === */
 var HeaderRow = (function () {
