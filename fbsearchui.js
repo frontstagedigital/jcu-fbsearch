@@ -111,6 +111,7 @@
     if (!body) return;
     body.style.height = "0px";
     body.style.overflow = "hidden";
+    body.classList.remove("border"); // ensure the border class is removed on close
   }
 
   function safeSubmit(form){
@@ -191,7 +192,9 @@
 
       // Mirror all checked boxes for this facet
       var checks = wrapper.querySelectorAll('input[type="checkbox"][name="' + cssEsc(param) + '"]:checked');
-      for (var i = 0; i < checks.length; i++) appendHidden(form, param, normalisePlusToSpace(checks[i].value || ""));
+      for (var i = 0; i < checks.length; i++) {
+        appendHidden(form, param, normalisePlusToSpace(checks[i].value || ""));
+      }
 
       // Close dropdown body before submit
       closeStudyLevelWrapper(btn);
@@ -203,7 +206,7 @@
       var cancel = e.target && e.target.closest(".multiselect .cancel-button");
       if (!cancel) return;
       e.stopPropagation(); e.preventDefault();
-      closeStudyLevelWrapper(cancel); // height:0 and overflow:hidden
+      closeStudyLevelWrapper(cancel); // height:0, overflow:hidden, remove 'border'
     }, true);
 
     // Selected filter chip removal
