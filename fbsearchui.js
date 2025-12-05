@@ -1,4 +1,4 @@
-/* FBSearchUI v2.3 - Featured multiselect + robust Apply + shared closer + header toggle */
+/* FBSearchUI v2.2 */
 (function () {
   var CFG = window.FBSearchUI || {};
   var DEBUG = !!window.FBSearchUI_DEBUG || !!CFG.debug;
@@ -13,22 +13,23 @@
   var clearHiddenNamePrefix = typeof CFG.clearHiddenNamePrefix === "string" ? CFG.clearHiddenNamePrefix : "f.";
   var submitDebounceMs = typeof CFG.submitDebounceMs === "number" ? CFG.submitDebounceMs : 150;
 
-  // Important: ensure this is always an array
+  // Ensure always strip "query" from mirrored params to avoid duplication
   var stripParams = (function(){
-    if (Array.isArray(CFG.stripParams)) return CFG.stripParams;
-    if (typeof CFG.stripParams === "string") {
-      var parts = CFG.stripParams.split(",");
-      var out = [];
-      for (var i = 0; i < parts.length; i++) out.push(parts[i].trim());
-      return out;
+    var out;
+    if (Array.isArray(CFG.stripParams)) {
+      out = CFG.stripParams.slice();
+    } else if (typeof CFG.stripParams === "string") {
+      out = CFG.stripParams.split(",").map(function(s){ return s.trim(); });
+    } else {
+      out = ["profile","collection"];
     }
-    return ["profile","collection"];
+    if (out.indexOf("query") === -1) out.push("query");
+    return out;
   })();
 
-  // Selected filter chips selector - update if your markup differs
+  // Selected filter chips selector
   var selectedFilterSelector = CFG.selectedFilterSelector || "#selected-filters .btn.active, #selected-filters [data-remove-name][data-remove-value]";
 
-  // --- helpers ---
   var lastSubmitAt = 0;
   function now(){ return Date.now ? Date.now() : new Date().getTime(); }
   function normalisePlusToSpace(s){ return s == null ? "" : String(s).replace(/\+/g, " "); }
@@ -41,9 +42,23 @@
     input.value = value == null ? "" : String(value);
   }
 
+  // check if the form already contains a non-hidden control with this name
+  function hasNonHiddenControl(form, name){
+    var nodes = form.querySelectorAll('[name]');
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (n.name === name) {
+        var isHidden = (n.tagName === "INPUT") && ((n.type || "").toLowerCase() === "hidden");
+        if (!isHidden) return true;
+      }
+    }
+    return false;
+  }
+
+  // remove hidden inputs for the given keys - never touch visible fields like the query
   function removeParams(form, keys){
     if (!keys || !keys.length) return;
-    var nodes = form.querySelectorAll('input[name]');
+    var nodes = form.querySelectorAll('input[type="hidden"][name]');
     for (var i = nodes.length - 1; i >= 0; i--) {
       var n = nodes[i];
       for (var k = 0; k < keys.length; k++) {
@@ -64,7 +79,7 @@
     var seen = Object.create(null);
     var out = [];
     for (var i = 0; i < nodeList.length; i++) {
-      var nm = nodeList[i] && nodeList[i].name || "";
+      var nm = nodeList[i].name || "";
       if (!nm || seen[nm]) continue;
       seen[nm] = true;
       out.push(nm);
@@ -97,7 +112,11 @@
       var kv = pairs[p].split("=");
       var k = kv[0] ? decodeURIComponent(kv[0].replace(/\+/g, " ")) : "";
       var v = kv.length > 1 ? decodeURIComponent(kv.slice(1).join("=").replace(/\+/g, " ")) : "";
-      if (exclude[k]) continue;
+      if (!k || exclude[k]) continue;
+
+      // Skip creating a hidden field if a non-hidden control with the same name already exists
+      if (hasNonHiddenControl(form, k)) continue;
+
       setHidden(form, k, v);
     }
   }
@@ -126,63 +145,13 @@
     var t = now();
     if (submitDebounceMs && (t - lastSubmitAt) < submitDebounceMs) { log("debounced submit"); return; }
     lastSubmitAt = t;
-    removeParams(form, stripParams); // final cleanup
+    // cleanup of mirrored hidden fields only
+    removeParams(form, stripParams);
     if (typeof form.requestSubmit === "function") form.requestSubmit(); else form.submit();
   }
 
-  // open/close helpers for featured multiselect
-  function openFeaturedMultiselect(root){
-    if (!root) return;
-    var body = root.querySelector('.study-level-wrapper');
-    var head = root.querySelector('.select-label-text');
-    if (!body || !head) return;
-
-    // reveal inner content if present
-    var inner = body.firstElementChild;
-    if (inner && inner.classList.contains('d-none')) inner.classList.remove('d-none');
-
-    // set height to content for visibility (single click)
-    body.style.height = body.scrollHeight + "px";
-    body.style.overflow = "visible";
-    body.classList.add("border");
-    head.classList.add("active");
-  }
-
-  function closeFeaturedMultiselect(root){
-    if (!root) return;
-    var body = root.querySelector('.study-level-wrapper');
-    var head = root.querySelector('.select-label-text');
-    if (body) {
-      body.style.height = "0px";
-      body.style.overflow = "hidden";
-      body.classList.remove("border");
-      // hide inner again to match initial state
-      var inner = body.firstElementChild;
-      if (inner && !inner.classList.contains('d-none')) inner.classList.add('d-none');
-    }
-    if (head) head.classList.remove('active');
-  }
-
-  function toggleFeaturedMultiselect(root){
-    if (!root) return;
-    var body = root.querySelector('.study-level-wrapper');
-    if (!body) return;
-    var open = body.style.height && body.style.height !== "0px";
-    if (open) closeFeaturedMultiselect(root); else openFeaturedMultiselect(root);
-  }
-
   function attach(form){
-    log("init OK - featured multiselect + chip removal + apply + header toggle");
-
-    // Header toggle for featured multiselect - fixes double-click to reopen
-    document.addEventListener("click", function(e){
-      var head = e.target && e.target.closest('.multiselect .active-label-text');
-      if (!head) return;
-      e.stopPropagation();
-      e.preventDefault();
-      var root = head.closest('.multiselect');
-      toggleFeaturedMultiselect(root);
-    }, true);
+    log("init OK - featured multiselect + chip removal + apply");
 
     // Featured/Simple option clicks - submit with preserved params
     document.addEventListener("click", function (e) {
@@ -203,9 +172,10 @@
 
       if (name) setHidden(form, name, value);
 
-      // update visible label for the control
-      updateControlLabel(option);
+      // reset pagination when sort/view changes
+      // if (name === "sort" || name === "ui_view") setHidden(form, "start_rank", "");
 
+      updateControlLabel(option);
       e.preventDefault();
       safeSubmit(form);
     }, true);
@@ -238,9 +208,6 @@
         setHidden(form, cb.name, normalisePlusToSpace(cb.value || ""));
       }
 
-      // Close for visual consistency
-      closeFeaturedMultiselect(wrapper);
-
       // Submit
       safeSubmit(form);
     }, true);
@@ -256,7 +223,15 @@
       var ms = cancel.closest('.multiselect');
       if (!ms) return;
 
-      closeFeaturedMultiselect(ms);
+      var body = ms.querySelector('.study-level-wrapper');
+      if (body) {
+        body.style.height = "0px";
+        body.style.overflow = "hidden";
+        body.classList.remove("border");
+      }
+
+      var head = ms.querySelector('.select-label-text');
+      if (head) head.classList.remove('active');
     }, true);
 
     // All Filters - Apply (modal)
