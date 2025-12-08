@@ -532,7 +532,7 @@ var FiltersModal = (function () {
       b.add('<div class="p-b-075">');
       b.add('<label class="flex align-start gap-050-column pointer select-label-text">');
       b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
-      b.add('<div class="js-fbsearch-filters-modal--label-text" data-filter-name="' + Html.esca(pName) + '">');
+      b.add('<div class="js-fbsearch-filters-modal--label-text" data-filter-name="' + Html.esca(label) + '">');
       b.add('<div class="f-semibold">' + Html.esc(titleCaseLabel(label)) + '</div>');
       b.add('</div>');
       b.add('</label>');
