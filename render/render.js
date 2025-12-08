@@ -184,7 +184,7 @@ var Results = (function () {
     b.add('<div class="col-5-lrg col-12">');
     if (facts.length) {
       b.add('<div class="f-uppercase f-overline p-b-100">Quick Facts</div>');
-      b.add('<ul class="list-none p-l-0">');
+      b.add('<ul class="list-none p-l-0 f-semibold">');
       for (var i = 0; i < facts.length; i++) {
         b.add('<li class="flex gap-050 align-center ' + Html.esc(facts[i].cls) + '">' + Html.esc(facts[i].text) + '</li>');
       }
@@ -235,7 +235,7 @@ var Results = (function () {
 
     if (facts.length) {
       b.add('  <div class="p-b-150">');
-      b.add('    <ul class="list-none p-l-0">');
+      b.add('    <ul class="list-none p-l-0 f-semibold">');
       for (var i = 0; i < facts.length; i++) {
         b.add('<li class="flex gap-050 align-center ' + Html.esc(facts[i].cls) + '">' + Html.esc(facts[i].text) + '</li>');
       }
