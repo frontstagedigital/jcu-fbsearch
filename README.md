@@ -1,7 +1,7 @@
 # FBSearch - JCU SSJS
 
-Each folder contains a single JS file named after the folder.
-Load them in this order to reproduce the full bundle:
+Each folder contains a single JS file .
+Load them in this order:
 
 1. utils/utils.js
 2. api/api.js
