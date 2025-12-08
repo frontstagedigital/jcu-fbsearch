@@ -13,7 +13,7 @@
   var clearHiddenNamePrefix = typeof CFG.clearHiddenNamePrefix === "string" ? CFG.clearHiddenNamePrefix : "f.";
   var submitDebounceMs = typeof CFG.submitDebounceMs === "number" ? CFG.submitDebounceMs : 150;
 
-  // Ensure always strip "query" from mirrored params to avoid duplication
+  // strip query from params to avoid duplication
   var stripParams = (function(){
     var out;
     if (Array.isArray(CFG.stripParams)) {
@@ -27,7 +27,7 @@
     return out;
   })();
 
-  // Selected filter chips selector (individual removal)
+  // Selected filter chips selector
   var selectedFilterSelector = CFG.selectedFilterSelector || "#selected-filters .btn.active, #selected-filters [data-remove-name][data-remove-value]";
 
   // "Clear all" selector 
@@ -58,7 +58,7 @@
     return false;
   }
 
-  // remove hidden inputs for the given keys - never touch visible fields like the query
+  // remove hidden inputs for the given keys 
   function removeParams(form, keys){
     if (!keys || !keys.length) return;
     var nodes = form.querySelectorAll('input[type="hidden"][name]');
@@ -90,8 +90,7 @@
     return out;
   }
 
-  // Parse a querystring or URL and apply params to the form, excluding keys
-  // Important: convert '+' to space before decodeURIComponent so values like "arts+and+social+sciences" decode correctly.
+  // Parse querystring and apply params to the form
   function applyQueryToForm(form, qsOrUrl, extraExclusions){
     var exclude = Object.create(null);
 
@@ -117,7 +116,7 @@
       var v = kv.length > 1 ? decodeURIComponent(kv.slice(1).join("=").replace(/\+/g, " ")) : "";
       if (!k || exclude[k]) continue;
 
-      // Skip creating a hidden field if a non-hidden control with the same name already exists
+      // Skip creating a hidden field if already exist
       if (hasNonHiddenControl(form, k)) continue;
 
       setHidden(form, k, v);
@@ -148,7 +147,7 @@
     var t = now();
     if (submitDebounceMs && (t - lastSubmitAt) < submitDebounceMs) { log("debounced submit"); return; }
     lastSubmitAt = t;
-    // cleanup of mirrored hidden fields only
+    // cleanup of mirrored hidden fields 
     removeParams(form, stripParams);
     if (typeof form.requestSubmit === "function") form.requestSubmit(); else form.submit();
   }
@@ -156,7 +155,7 @@
   function attach(form){
     log("init OK - featured multiselect + chip removal + apply");
 
-    // Featured/Simple option clicks - submit with preserved params
+    // Featured/Simple clicks - submit with preserved params
     document.addEventListener("click", function (e) {
       var option = e.target && e.target.closest('.select-wrapper .select-label-text[data-param-name][data-param-value]');
       if (!option) return;
@@ -312,10 +311,10 @@
 
       e.stopPropagation(); e.preventDefault();
 
-      // Pre-fill with current URL so we keep non-facet params (e.g. query, sort, ui_view)
+      // Pre-fill with current URL
       applyQueryToForm(form, window.location.search);
 
-      // Remove all mirrored facet params (prefix "f.")
+      // Remove all facet params (prefix "f.")
       clearHiddenByPrefix(form, clearHiddenNamePrefix);
 
       // Defensive: remove any non-hidden fields that might start with the facet prefix
@@ -326,7 +325,7 @@
       // Reset pagination back to first page
       setHidden(form, "start_rank", "");
 
-      // Visually untick everything in UI so next open reflects reality
+      // Visually untick everything in UI
       var modal = document.querySelector(modalRootSelector);
       if (modal) {
         var modalChecks = modal.querySelectorAll('input[type="checkbox"]');
