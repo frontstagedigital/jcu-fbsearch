@@ -333,7 +333,7 @@ var FeaturedFilters = (function () {
     // wrapper - add "multiselect" class only for checkbox facets
     b.add(
       '<div class="' + (isMulti ? 'multiselect ' : '') +
-      'no-select select-wrapper search-controls col-12 col-6-med col-2-lrg" data-featured-facet="' +
+      'no-select select-wrapper search-controls col-12 col-6-med col-2-lrg js-fbsearch-featured-facet" data-featured-facet="' +
       Html.esc(facetName) + '">'
     );
 
@@ -486,7 +486,7 @@ var FiltersModal = (function () {
     b.add(
       '<button class="flex space-between w-100 btn-no-style plus-black pointer m-b-0 p-b-150 p-t-150" ' +
       'aria-expanded="false" aria-controls="' + id + '-content">' +
-      '<h3 class="m-0">' + Html.esc(facet.name) + '</h3></button>'
+      '<h3 class="m-0 f-display-4">' + Html.esc(facet.name) + '</h3></button>'
     );
     b.add('<div id="' + id + '-content" class="p-t-100" style="display: none;">');
 
@@ -529,10 +529,15 @@ var FiltersModal = (function () {
       var checked = v.selected ? ' checked="checked"' : "";
 
       // Use label for display, value token for submission
-      b.add('<div class="p-b-075"><label class="flex align-center gap-050-column pointer">');
-      b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
-      b.add('<span>' + Html.esc(titleCaseLabel(label)) + '</span>');
-      b.add('</label></div>');
+      b.add('<div class="p-b-075">');
+      b.add('<label class="flex align-start gap-050-column pointer select-label-text">');
+      b.add('<input type="checkbox" checked="" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
+      b.add('<div class="js-filters-modal--label-text" data-filter-name="' + Html.esca(pName) + '">');
+      b.add('<div class="f-semibold">' + Html.esc(titleCaseLabel(label)) + '</div>');
+      b.add('</div>');
+      b.add('</label>');
+      b.add('</div>');
+
     }
 
     b.add('</div></div>');
@@ -547,7 +552,7 @@ var FiltersModal = (function () {
     b.add('<div class="container flex flex-column h-100">');
     b.add('<div class="gap-100-row p-l-025 p-r-025 flex flex-column flex-1">');
     b.add('<section style="flex-shrink: 0;">');
-    b.add('<div class="flex space-between align-center p-t-100 p-b-100"><h2 class="m-0">All Filters</h2><button id="close-filters-button" class="btn btn-no-style m-b-0" data-panel="close-filters">Close</button></div>');
+    b.add('<div class="flex space-between align-center p-t-100 p-b-100"><h3 class="m-0 f-display-3">Filters</h3><button id="close-filters-button" class="btn btn-no-style m-b-0 f-uppercase f-overline" data-panel="close-filters">Close</button></div>');
     b.add('</section>');
 
     b.add('<section id="filters-scrollable-section" class="overflow_y-auto overflow_x-h flex-1">');
