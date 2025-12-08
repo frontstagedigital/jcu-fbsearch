@@ -352,3 +352,86 @@
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 })();
+
+
+document.addEventListener("DOMContentLoaded", function () {
+  // Text data
+  const copy = {
+    studentTypeDomestic: "A current or recent resident of Australia, or a New Zealand citizen, studying at a campus in Australia",
+    studentTypeInternational: "A student who is not an Australian or New Zealand citizen, or a permanent resident of Australia, studying at a campus in Australia or overseas",
+    studyLevelPostgraduate: "Study after your first degree (Usually your second degree)",
+    studyLevelUndergraduate: "Usually your first degree",
+    studyLevelResearch: "Advanced study including a research project"
+  };
+
+  function appendDescription(selector, text, extraClass) {
+    const targets = document.querySelectorAll(selector);
+    if (!targets.length) return;
+
+    targets.forEach(function (el) {
+      const p = document.createElement("p");
+      p.className = "f-small m-0" + (extraClass ? " " + extraClass : "");
+      p.textContent = text;
+      el.appendChild(p);
+    });
+  }
+
+  // Featured facet - student type
+  appendDescription(
+    ".js-fbsearch-featured-facet .study-level-wrapper[data-student-type='domestic'] label",
+    copy.studentTypeDomestic,
+    "p-l-150"
+  );
+
+  appendDescription(
+    ".js-fbsearch-featured-facet .study-level-wrapper[data-student-type='international'] label",
+    copy.studentTypeInternational,
+    "p-l-150"
+  );
+
+  // Featured facet - study level
+  appendDescription(
+    ".js-fbsearch-featured-facet .study-level-wrapper[data-study-level='postgraduate'] label",
+    copy.studyLevelPostgraduate,
+    "p-l-150"
+  );
+
+  appendDescription(
+    ".js-fbsearch-featured-facet .study-level-wrapper[data-study-level='undergraduate'] label",
+    copy.studyLevelUndergraduate,
+    "p-l-150"
+  );
+
+  appendDescription(
+    ".js-fbsearch-featured-facet .study-level-wrapper[data-study-level='research'] label",
+    copy.studyLevelResearch,
+    "p-l-150"
+  );
+
+  // Filters panel - student type
+  appendDescription(
+    "#filters-panel #student-type-content .js-fbsearch-filters-modal--label-text[data-filter-name='domestic']",
+    copy.studentTypeDomestic
+  );
+
+  appendDescription(
+    "#filters-panel #student-type-content .js-fbsearch-filters-modal--label-text[data-filter-name='international']",
+    copy.studentTypeInternational
+  );
+
+  // Filters panel - study level
+  appendDescription(
+    "#filters-panel #study-level-content .js-fbsearch-filters-modal--label-text[data-filter-name='postgraduate']",
+    copy.studyLevelPostgraduate
+  );
+
+  appendDescription(
+    "#filters-panel #study-level-content .js-fbsearch-filters-modal--label-text[data-filter-name='undergraduate']",
+    copy.studyLevelUndergraduate
+  );
+
+  appendDescription(
+    "#filters-panel #study-level-content .js-fbsearch-filters-modal--label-text[data-filter-name='research']",
+    copy.studyLevelResearch
+  );
+});
