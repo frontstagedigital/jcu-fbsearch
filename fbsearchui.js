@@ -378,32 +378,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Featured facet - student type
   appendDescription(
-    ".js-fbsearch-featured-facet .study-level-wrapper[data-student-type='domestic'] label",
+    ".js-fbsearch-featured-facet .study-level-wrapper div[data-student-type='domestic'] label",
     copy.studentTypeDomestic,
     "p-l-150"
   );
 
   appendDescription(
-    ".js-fbsearch-featured-facet .study-level-wrapper[data-student-type='international'] label",
+    ".js-fbsearch-featured-facet .study-level-wrapper div[data-student-type='international'] label",
     copy.studentTypeInternational,
     "p-l-150"
   );
 
   // Featured facet - study level
   appendDescription(
-    ".js-fbsearch-featured-facet .study-level-wrapper[data-study-level='postgraduate'] label",
+    ".js-fbsearch-featured-facet .study-level-wrapper div[data-study-level='postgraduate'] label",
     copy.studyLevelPostgraduate,
     "p-l-150"
   );
 
   appendDescription(
-    ".js-fbsearch-featured-facet .study-level-wrapper[data-study-level='undergraduate'] label",
+    ".js-fbsearch-featured-facet .study-level-wrapper div[data-study-level='undergraduate'] label",
     copy.studyLevelUndergraduate,
     "p-l-150"
   );
 
   appendDescription(
-    ".js-fbsearch-featured-facet .study-level-wrapper[data-study-level='research'] label",
+    ".js-fbsearch-featured-facet .study-level-wrapper div[data-study-level='research'] label",
     copy.studyLevelResearch,
     "p-l-150"
   );
@@ -415,7 +415,7 @@ document.addEventListener("DOMContentLoaded", function () {
   );
 
   appendDescription(
-    "#filters-panel #student-type-content .js-fbsearch-filters-modal--label-text[data-filter-name='international']",
+    "#filters-panel #student-type-content .js-fbsearch-filters-modal--label-text[data-filter-name='International']",
     copy.studentTypeInternational
   );
 
