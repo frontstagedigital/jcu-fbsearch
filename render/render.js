@@ -120,16 +120,14 @@ var Results = (function () {
     };
   }
 
-
-
-  function quickFacts(result) {
+  function quickFactsBlocks(result) {
     var md = (result && result.listMetadata) || {};
     var atar = firstNonEmptyArray(md.courseAtarCutoff);
     var durations = firstNonEmptyArray(md.courseDuration);
     var locs = firstNonEmptyArray(md.campus, md.campusInt, md.campusDom);
     var months = firstNonEmptyArray(md.commencingDate);
 
-    // inline pipe-join de-dup for durations
+    // de-duped pipe-join for durations
     var durJoined = (function (arr) {
       if (!arr) return "";
       var seen = Object.create ? Object.create(null) : {};
@@ -137,23 +135,29 @@ var Results = (function () {
       for (var i = 0; i < arr.length; i++) {
         var v = String(arr[i] || "").trim();
         if (!v) continue;
-        if (!seen[v]) {
-          seen[v] = true;
-          out.push(v);
-        }
+        if (!seen[v]) { seen[v] = true; out.push(v); }
       }
       return out.join(" | ");
     })(durations);
 
-    var facts = [];
-    if (atar.length) facts.push("ATAR " + atar[0]);
-    if (durJoined) facts.push(durJoined);
+    var blocks = [];
+    if (atar.length) {
+      blocks.push({ cls: "target-black-before", text: "ATAR " + atar[0] });
+    }
     var locJoined = uniqJoined(locs);
-    if (locJoined) facts.push(locJoined);
+    if (durJoined) {
+      blocks.push({ cls: "clock-black-before", text: durJoined });
+    }
+    if (locJoined) {
+      blocks.push({ cls: "location-black-before", text: locJoined });
+    }
     var monthsJoined = uniqJoined(months);
-    if (monthsJoined) facts.push(monthsJoined);
-    return facts;
+    if (monthsJoined) {
+      blocks.push({ cls: "calendar-black-before", text: monthsJoined });
+    }
+    return blocks;
   }
+
 
   function description150(result) {
     var md = (result && result.listMetadata) || {};
@@ -166,28 +170,37 @@ var Results = (function () {
     var lvl = studyLevelInfo(result);
     var lt = linkAndTitle(result);
     var desc = description150(result);
-    var facts = quickFacts(result);
+    var facts = quickFactsBlocks(result);
+
     var b = Html.buffer();
     b.add('<div class="grid-12 bg-white border p-150 m-b-100">');
+
     b.add('<div class="col-6-lrg col-12">');
     if (lvl.label) b.add('<div class="f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + ' p-b-100">' + Html.esc(lvl.label) + '</div>');
     b.add('<a href="' + Html.esc(lt.link) + '"><h3 class=" p-b-150 m-t-0">' + Html.esc(lt.title) + '</h3></a>');
     if (desc) b.add('<p>' + Html.esc(desc) + '</p>');
     b.add('</div>');
+
     b.add('<div class="col-5-lrg col-12">');
     if (facts.length) {
       b.add('<div class="f-uppercase f-overline p-b-100">Quick Facts</div>');
-      b.add('<ul class="list-none p-l-0 f-semibold">');
-      for (var i = 0; i < facts.length; i++) b.add('<li>' + Html.esc(facts[i]) + '</li>');
+      b.add('<ul class="list-none p-l-0">');
+      for (var i = 0; i < facts.length; i++) {
+        b.add('<li class="flex gap-050 align-center ' + Html.esc(facts[i].cls) + '">' + Html.esc(facts[i].text) + '</li>');
+      }
       b.add('</ul>');
     }
     b.add('</div>');
+
     b.add('<div class="col-1-lrg col-12">');
     b.add('<div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"><span class="d-none-med">compare</span></div>');
     b.add('</div>');
+
     b.add('<div class="col-12"><p class="btn-cta m-0">');
     b.add('<a href="' + Html.esc(lt.link) + '" class="f-primary-dark">View course</a>');
-    b.add('</p></div></div>');
+    b.add('</p></div>');
+
+    b.add('</div>');
     return b.toString();
   }
 
@@ -205,9 +218,11 @@ var Results = (function () {
     var lvl = studyLevelInfo(result);
     var lt = linkAndTitle(result);
     var desc = description150(result);
-    var facts = quickFacts(result);
+    var facts = quickFactsBlocks(result);
+
     var b = Html.buffer();
     b.add('<div class="col-12 col-4-lrg bg-white border p-150">');
+
     b.add('  <div class="p-b-100">');
     b.add('    <div class="flex flex-wrap space-between align-center p-b-100 gap-0125">');
     if (lvl.label) b.add('      <div class="f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + '">' + Html.esc(lvl.label) + '</div>');
@@ -217,18 +232,23 @@ var Results = (function () {
     b.add('    <a href="' + Html.esc(lt.link) + '"><h3 class=" p-b-150 m-t-0">' + Html.esc(lt.title) + '</h3></a>');
     if (desc) b.add('    <p>' + Html.esc(desc) + '</p>');
     b.add('  </div>');
+
     if (facts.length) {
       b.add('  <div class="p-b-150">');
-      b.add('    <ul class="list-none p-l-0 f-semibold">');
-      for (var i = 0; i < facts.length; i++) b.add('<li>' + Html.esc(facts[i]) + '</li>');
+      b.add('    <ul class="list-none p-l-0">');
+      for (var i = 0; i < facts.length; i++) {
+        b.add('<li class="flex gap-050 align-center ' + Html.esc(facts[i].cls) + '">' + Html.esc(facts[i].text) + '</li>');
+      }
       b.add('    </ul>');
       b.add('  </div>');
     }
+
     b.add('  <div class="flex flex-wrap space-between align-center p-b-100 gap-0125">');
     b.add('    <p class="btn-cta m-0">');
     b.add('      <a href="' + Html.esc(lt.link) + '" class="f-primary-dark">View course</a>');
     b.add('    </p>');
     b.add('  </div>');
+
     b.add('</div>');
     return b.toString();
   }
