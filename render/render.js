@@ -529,6 +529,11 @@ var FiltersModal = (function () {
       var checked = v.selected ? ' checked="checked"' : "";
 
       // Use label for display, value token for submission
+      b.add('<div class="p-b-075"><label class="flex align-center gap-050-column pointer">');
+      b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
+      b.add('<span>' + Html.esc(titleCaseLabel(label)) + '</span>');
+      b.add('</label></div>');
+
       b.add('<div class="p-b-075">');
       b.add('<label class="flex align-start gap-050-column pointer select-label-text">');
       b.add('<input type="checkbox" checked="" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
