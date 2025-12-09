@@ -369,6 +369,11 @@ var FeaturedFilters = (function () {
     b.add('    <div class="' + (isMulti ? 'max-width d-none' : 'd-none') + '">');
 
     var values = facet.allValues || [];
+
+    if(facetSlug === "study-area" && values.length < 14) {
+        b.add('<div class="m-100 overflow_y-auto overflow_x-h" style="max-height:500px;">');
+    }
+
     for (var i = 0; i < values.length; i++) {
       var v = values[i];
       if (!v || !v.label) continue;
@@ -382,12 +387,21 @@ var FeaturedFilters = (function () {
 
       if (isMulti) {
         // MULTI - checkboxes
-        b.add(
-          '      <div tabindex="0"' +
-          ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
-          ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
-          '>'
-        );
+        if(facetSlug === "study-area"){
+          b.add(
+            '      <div tabindex="0"' +
+            ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
+            ' class="p-b-075 p-l-075 p-r-075 select-label-text f-semibold"' +
+            '>'
+          );
+        } else {
+          b.add(
+            '      <div tabindex="0"' +
+            ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
+            ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
+            '>'
+          );
+        }
         b.add('        <label class="pointer d-block">');
         //b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(label) + '"' + checkedAttr + '>');\
         b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(pair.value || label) + '"' + checkedAttr + '>');
@@ -417,6 +431,10 @@ var FeaturedFilters = (function () {
       b.add('          <button class="cancel-button btn secondary-two m-b-0 w-100">Cancel</button>');
       b.add('        </div>');
       b.add('      </section>');
+    }
+
+    if(facetSlug === "study-area" && values.length < 14) {
+        b.add('</div">');
     }
 
     b.add('    </div>'); // inner
