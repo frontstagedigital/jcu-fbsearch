@@ -370,7 +370,7 @@ var FeaturedFilters = (function () {
 
     var values = facet.allValues || [];
 
-    if(facetSlug === "study-area" && values.length < 14) {
+    if(facetSlug === "study-area" && values.length > 14) {
         b.add('<div class="m-100 overflow_y-auto overflow_x-h" style="max-height:500px;">');
     }
 
@@ -433,7 +433,7 @@ var FeaturedFilters = (function () {
       b.add('      </section>');
     }
 
-    if(facetSlug === "study-area" && values.length < 14) {
+    if(facetSlug === "study-area" && values.length > 14) {
         b.add('</div">');
     }
 
