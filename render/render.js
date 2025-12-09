@@ -425,7 +425,7 @@ var FeaturedFilters = (function () {
     }
 
     if(facetSlug === "study-area" && values.length > 14) {
-        b.add('</div">');
+        b.add('</div>');
     }
 
 
