@@ -439,6 +439,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // Config for compare/save functionality with cookie
 var compareCookieName = "jcu_saved_courses"; 
+var compareCookieDomain = ".www.jcu.edu.au"; 
 var debugEnabled = true;                     // Toggle debug
 var debugTargetId = "compare-debug";         // debug div output
 
@@ -452,7 +453,7 @@ function setCookie(name, value, days) {
         date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
         expires = "; expires=" + date.toUTCString();
     }
-    document.cookie = name + "=" + value + expires + "; path=/";
+    document.cookie = name + "=" + value + expires + "; path=/; domain=" + compareCookieDomain;
 }
 
 function getCookie(name) {
