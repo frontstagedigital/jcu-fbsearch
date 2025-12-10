@@ -180,7 +180,7 @@ var Results = (function () {
     var cid = courseAssetId(result);
 
     var b = Html.buffer();
-    b.add('<div class="grid-12 bg-white border p-150 m-b-100">');
+    b.add('<div class="grid-12 bg-white border p-150 m-b-100 js-fbsearch-result-item">');
 
     b.add('<div class="col-6-lrg col-12">');
     if (lvl.label) b.add('<div class="f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + ' p-b-100">' + Html.esc(lvl.label) + '</div>');
@@ -200,7 +200,7 @@ var Results = (function () {
     b.add('</div>');
 
     b.add('<div class="col-1-lrg col-12">');
-    b.add('<div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"' + (cid ? ' data-course-asset-id="' + Html.esc(cid) + '"' : '') +'><span class="d-none-med">compare</span></div>');
+    b.add('<div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center js-fbsearch-compare-save"' + (cid ? ' data-course-asset-id="' + Html.esc(cid) + '"' : '') +'><span class="d-none-med">compare</span></div>');
     b.add('</div>');
 
     b.add('<div class="col-12"><p class="btn-cta m-0">');
@@ -229,13 +229,13 @@ var Results = (function () {
     var cid = courseAssetId(result);
 
     var b = Html.buffer();
-    b.add('<div class="col-12 col-4-lrg bg-white border p-150">');
+    b.add('<div class="col-12 col-4-lrg bg-white border p-150 js-fbsearch-result-item">');
 
     b.add('  <div class="p-b-100">');
     b.add('    <div class="flex flex-wrap space-between align-center p-b-100 gap-0125">');
     if (lvl.label) b.add('      <div class="f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + '">' + Html.esc(lvl.label) + '</div>');
     else b.add('      <div></div>');
-    b.add('      <div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"' + (cid ? ' data-course-asset-id="' + Html.esc(cid) + '"' : '') + '><span class="d-none-med">compare</span></div>');
+    b.add('      <div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center js-fbsearch-compare-save"' + (cid ? ' data-course-asset-id="' + Html.esc(cid) + '"' : '') + '><span class="d-none-med">compare</span></div>');
     b.add('    </div>');
     b.add('    <a href="' + Html.esc(lt.link) + '"><h3 class=" p-b-150 m-t-0">' + Html.esc(lt.title) + '</h3></a>');
     if (desc) b.add('    <p>' + Html.esc(desc) + '</p>');
@@ -279,12 +279,12 @@ var Results = (function () {
     var cid = courseAssetId(result);
 
     var b = Html.buffer();
-    b.add('<div class="bg-white border p-150 flex flex-wrap space-between m-b-100 align-center">');
+    b.add('<div class="bg-white border p-150 flex flex-wrap space-between m-b-100 align-center js-fbsearch-result-item">');
     b.add('  <a class="m-b-0" href="' + Html.esc(lt.link) + '"><h3 class="m-t-0">' + Html.esc(lt.title) + '</h3></a>');
     b.add('  <div class="flex flex-wrap gap-200 align-center">');
     if (atar.length) b.add('    <span class="f-overline">ATAR ' + Html.esc(atar[0]) + '</span>');
     if (lvl.label) b.add('    <div class="p-l-025 f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + '">' + Html.esc(lvl.label) + '</div>');
-    b.add(    '    <div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"' + (cid ? ' data-course-asset-id="' + Html.esc(cid) + '"' : '') + '><span class="d-none-med">compare</span></div>');
+    b.add(    '    <div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center js-fbsearch-compare-save"' + (cid ? ' data-course-asset-id="' + Html.esc(cid) + '"' : '') + '><span class="d-none-med">compare</span></div>');
     b.add('    <p class="btn-cta m-0"><a href="' + Html.esc(lt.link) + '" class="f-primary-dark">View Course</a></p>');
     b.add('  </div>');
     b.add('</div>');
