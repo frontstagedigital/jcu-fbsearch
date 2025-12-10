@@ -1,4 +1,4 @@
-/* FBSearchUI v2.2 */
+/* FBSearchUI v2.3 */
 (function () {
   var CFG = window.FBSearchUI || {};
   var DEBUG = !!window.FBSearchUI_DEBUG || !!CFG.debug;
@@ -433,4 +433,160 @@ document.addEventListener("DOMContentLoaded", function () {
     "#filters-panel #study-level-content .js-fbsearch-filters-modal--label-text[data-filter-name='research']",
     copy.studyLevelResearch
   );
+});
+
+
+// Config
+var compareCookieName = "fbsearch_compare_courses";
+var debugEnabled = true;              // enable/disable debug
+var debugTargetId = "compare-debug";  // Id for the debug div
+
+var debugElement = null;
+
+// Cookie helpers
+function setCookie(name, value, days) {
+    var expires = "";
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
+}
+
+function getCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(";");
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i].trim();
+        if (c.indexOf(nameEQ) === 0) {
+            return decodeURIComponent(c.substring(nameEQ.length, c.length));
+        }
+    }
+    return null;
+}
+
+// saved IDs
+function getSavedAssetIds() {
+    var cookieValue = getCookie(compareCookieName);
+    if (!cookieValue) return [];
+
+    try {
+        var parsed = JSON.parse(cookieValue);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveAssetIds(ids) {
+    setCookie(compareCookieName, JSON.stringify(ids), 30); // 30 days
+    updateDebugOutput();
+}
+
+function toggleAssetId(assetId) {
+    var ids = getSavedAssetIds();
+    var index = ids.indexOf(assetId);
+
+    if (index === -1) {
+        ids.push(assetId);
+        saveAssetIds(ids);
+        return true; // saved
+    } else {
+        ids.splice(index, 1);
+        saveAssetIds(ids);
+        return false; // removed
+    }
+}
+
+// Debug 
+function ensureDebugElement() {
+    if (!debugEnabled) return null;
+
+    if (debugElement && document.body.contains(debugElement)) {
+        return debugElement;
+    }
+
+    var resultsContainer = document.getElementById("search-results");
+    if (!resultsContainer) return null;
+
+    var wrapperParent = resultsContainer.parentNode;
+    if (!wrapperParent) return null;
+
+    var div = document.createElement("div");
+    div.id = debugTargetId;
+    div.style.fontFamily = "monospace";
+    div.style.fontSize = "12px";
+    div.style.marginBottom = "8px";
+
+    wrapperParent.insertBefore(div, resultsContainer);
+
+    debugElement = div;
+    return debugElement;
+}
+
+function updateDebugOutput() {
+    if (!debugEnabled) return;
+
+    var target = ensureDebugElement();
+    if (!target) return;
+
+    var ids = getSavedAssetIds();
+    if (ids.length === 0) {
+        target.textContent = "Saved asset IDs: (none)";
+    } else {
+        target.textContent = "Saved asset IDs: " + ids.join(", ");
+    }
+}
+
+function setButtonSavedState(button, isSaved) {
+    if (isSaved) {
+        // Saved state
+        button.classList.remove("checkbox-blank-black-before");
+        button.classList.add("checkbox-checked-black-before", "saved");
+        button.textContent = "Saved";
+    } else {
+        // Unsaved/default state
+        button.classList.remove("checkbox-checked-black-before", "saved");
+        button.classList.add("checkbox-blank-black-before");
+        button.innerHTML = '<span class="d-none-med">compare</span>';
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    var resultsContainer = document.getElementById("search-results");
+    if (!resultsContainer) return;
+
+    // Set up debug div if enabled
+    if (debugEnabled) {
+        ensureDebugElement();
+        updateDebugOutput();
+    }
+
+    var buttons = resultsContainer.querySelectorAll(
+        ".js-fbsearch-result-item .js-fbsearch-compare-save"
+    );
+
+    var savedIds = getSavedAssetIds();
+
+    // Initialise buttons from cookie
+    for (var i = 0; i < buttons.length; i++) {
+        var btn = buttons[i];
+        var assetId = btn.dataset.courseAssetId;
+
+        if (!assetId) continue;
+
+        var isSaved = savedIds.indexOf(assetId) !== -1;
+        setButtonSavedState(btn, isSaved);
+
+        btn.addEventListener("click", function (e) {
+            e.preventDefault();
+
+            var assetId = this.dataset.courseAssetId;
+            if (!assetId) return;
+
+            var nowSaved = toggleAssetId(assetId);
+            setButtonSavedState(this, nowSaved);
+        });
+    }
 });
