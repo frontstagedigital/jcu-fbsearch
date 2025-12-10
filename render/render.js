@@ -1,33 +1,4 @@
 /* === render/results.js === */
-
-// simple title case for UI labels - preserves acronyms, keeps small words lower-case mid-phrase
-function titleCaseLabel(str) {
-  var STOP = {
-    "and":1, "or":1, "of":1, "the":1, "in":1, "on":1, "at":1,
-    "for":1, "to":1, "a":1, "an":1, "by":1, "from":1, "with":1
-  };
-  function capWord(w) {
-    if (!w) return w;
-    if (/[A-Z]{2,}/.test(w)) return w;                // keep acronyms like JCU, ATAR
-    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
-  }
-  function capHyphenated(w) {
-    var parts = w.split("-");
-    for (var i = 0; i < parts.length; i++) parts[i] = capWord(parts[i]);
-    return parts.join("-");
-  }
-  var parts = String(str || "").trim().split(/\s+/);
-  if (!parts.length) return str;
-  for (var i = 0; i < parts.length; i++) {
-    var raw = parts[i], lower = raw.toLowerCase();
-    var isEdge = (i === 0 || i === parts.length - 1);
-    parts[i] = (!isEdge && STOP[lower])
-      ? lower
-      : (raw.indexOf("-") > -1 ? capHyphenated(raw) : capWord(raw));
-  }
-  return parts.join(" ");
-}
-
 var Results = (function () {
   // -------- JCU helpers --------
   function firstNonEmptyArray() {
@@ -43,6 +14,41 @@ var Results = (function () {
       }
     }
     return [];
+  }
+
+  // simple title case for UI labels - preserves acronyms, keeps small words lower-case mid-phrase
+  function titleCaseLabel(str) {
+    var STOP = {
+      "and":1, "or":1, "of":1, "the":1, "in":1, "on":1, "at":1,
+      "for":1, "to":1, "a":1, "an":1, "by":1, "from":1, "with":1
+    };
+    function capWord(w) {
+      if (!w) return w;
+      if (/[A-Z]{2,}/.test(w)) return w;                // keep acronyms like JCU, ATAR
+      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    }
+    function capHyphenated(w) {
+      var parts = w.split("-");
+      for (var i = 0; i < parts.length; i++) parts[i] = capWord(parts[i]);
+      return parts.join("-");
+    }
+    var parts = String(str || "").trim().split(/\s+/);
+    if (!parts.length) return str;
+    for (var i = 0; i < parts.length; i++) {
+      var raw = parts[i], lower = raw.toLowerCase();
+      var isEdge = (i === 0 || i === parts.length - 1);
+      parts[i] = (!isEdge && STOP[lower])
+        ? lower
+        : (raw.indexOf("-") > -1 ? capHyphenated(raw) : capWord(raw));
+    }
+    return parts.join(" ");
+  }
+
+  function courseAssetId(result) {
+    var md = (result && result.listMetadata) || {};
+    // try a few, take the first non-empty
+    var ids = firstNonEmptyArray(md.courseAssetID, md.courseAssetId, md.assetID, md.assetId);
+    return ids.length ? String(ids[0]) : "";
   }
 
   function uniqJoined(arr) {
@@ -171,6 +177,7 @@ var Results = (function () {
     var lt = linkAndTitle(result);
     var desc = description150(result);
     var facts = quickFactsBlocks(result);
+    var cid = courseAssetId(result);
 
     var b = Html.buffer();
     b.add('<div class="grid-12 bg-white border p-150 m-b-100">');
@@ -193,7 +200,7 @@ var Results = (function () {
     b.add('</div>');
 
     b.add('<div class="col-1-lrg col-12">');
-    b.add('<div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"><span class="d-none-med">compare</span></div>');
+    b.add('<div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"' + (cid ? ' data-course-asset-id="' + Html.esc(cid) + '"' : '') +'><span class="d-none-med">compare</span></div>');
     b.add('</div>');
 
     b.add('<div class="col-12"><p class="btn-cta m-0">');
@@ -219,6 +226,7 @@ var Results = (function () {
     var lt = linkAndTitle(result);
     var desc = description150(result);
     var facts = quickFactsBlocks(result);
+    var cid = courseAssetId(result);
 
     var b = Html.buffer();
     b.add('<div class="col-12 col-4-lrg bg-white border p-150">');
@@ -227,7 +235,7 @@ var Results = (function () {
     b.add('    <div class="flex flex-wrap space-between align-center p-b-100 gap-0125">');
     if (lvl.label) b.add('      <div class="f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + '">' + Html.esc(lvl.label) + '</div>');
     else b.add('      <div></div>');
-    b.add('      <div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"><span class="d-none-med">compare</span></div>');
+    b.add('      <div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"' + (cid ? ' data-course-asset-id="' + Html.esc(cid) + '"' : '') + '><span class="d-none-med">compare</span></div>');
     b.add('    </div>');
     b.add('    <a href="' + Html.esc(lt.link) + '"><h3 class=" p-b-150 m-t-0">' + Html.esc(lt.title) + '</h3></a>');
     if (desc) b.add('    <p>' + Html.esc(desc) + '</p>');
@@ -268,13 +276,15 @@ var Results = (function () {
     var lt = linkAndTitle(result);
     var md = (result && result.listMetadata) || {};
     var atar = firstNonEmptyArray(md.courseAtarCutoff);
+    var cid = courseAssetId(result);
+
     var b = Html.buffer();
     b.add('<div class="bg-white border p-150 flex flex-wrap space-between m-b-100 align-center">');
     b.add('  <a class="m-b-0" href="' + Html.esc(lt.link) + '"><h3 class="m-t-0">' + Html.esc(lt.title) + '</h3></a>');
     b.add('  <div class="flex flex-wrap gap-200 align-center">');
     if (atar.length) b.add('    <span class="f-overline">ATAR ' + Html.esc(atar[0]) + '</span>');
     if (lvl.label) b.add('    <div class="p-l-025 f-uppercase f-overline flex gap-025 align-center ' + (lvl.colour || '') + '">' + Html.esc(lvl.label) + '</div>');
-    b.add('    <div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"><span class="d-none-med">compare</span></div>');
+    b.add(    '    <div class="f-uppercase f-overline btn secondary-three round-med xsm checkbox-blank-black-before flex space-evenly align-center"' + (cid ? ' data-course-asset-id="' + Html.esc(cid) + '"' : '') + '><span class="d-none-med">compare</span></div>');
     b.add('    <p class="btn-cta m-0"><a href="' + Html.esc(lt.link) + '" class="f-primary-dark">View Course</a></p>');
     b.add('  </div>');
     b.add('</div>');
