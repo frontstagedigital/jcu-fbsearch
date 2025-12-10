@@ -436,10 +436,11 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
-// Config
-var compareCookieName = "fbsearch_compare_courses";
-var debugEnabled = true;              // enable/disable debug
-var debugTargetId = "compare-debug";  // Id for the debug div
+
+// Config for cookie-based saved course comparison
+var compareCookieName = "jcu_saved_courses"; 
+var debugEnabled = true;                     // enable/disable debug
+var debugTargetId = "compare-debug";         // Id debug div
 
 var debugElement = null;
 
@@ -491,15 +492,15 @@ function toggleAssetId(assetId) {
     if (index === -1) {
         ids.push(assetId);
         saveAssetIds(ids);
-        return true; // saved
+        return true; // now saved
     } else {
         ids.splice(index, 1);
         saveAssetIds(ids);
-        return false; // removed
+        return false; // now removed
     }
 }
 
-// Debug 
+// Debug
 function ensureDebugElement() {
     if (!debugEnabled) return null;
 
@@ -539,6 +540,7 @@ function updateDebugOutput() {
     }
 }
 
+// UI 
 function setButtonSavedState(button, isSaved) {
     if (isSaved) {
         // Saved state
@@ -546,7 +548,7 @@ function setButtonSavedState(button, isSaved) {
         button.classList.add("checkbox-checked-black-before", "saved");
         button.textContent = "Saved";
     } else {
-        // Unsaved/default state
+        // Unsaved state
         button.classList.remove("checkbox-checked-black-before", "saved");
         button.classList.add("checkbox-blank-black-before");
         button.innerHTML = '<span class="d-none-med">compare</span>';
@@ -557,7 +559,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var resultsContainer = document.getElementById("search-results");
     if (!resultsContainer) return;
 
-    // Set up debug div if enabled
     if (debugEnabled) {
         ensureDebugElement();
         updateDebugOutput();
@@ -569,7 +570,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var savedIds = getSavedAssetIds();
 
-    // Initialise buttons from cookie
     for (var i = 0; i < buttons.length; i++) {
         var btn = buttons[i];
         var assetId = btn.dataset.courseAssetId;
