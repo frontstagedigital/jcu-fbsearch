@@ -534,7 +534,6 @@ function ensureDebugElement() {
 
     var div = document.createElement("div");
     div.id = debugTargetId;
-    Optional: style it a little if you want
     div.style.fontFamily = "monospace";
     div.style.fontSize = "12px";
     div.style.marginBottom = "8px";
