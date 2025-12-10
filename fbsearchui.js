@@ -437,10 +437,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 
-// Config for cookie-based saved course comparison
+// Config for compare/save functionality with cookie
 var compareCookieName = "jcu_saved_courses"; 
-var debugEnabled = true;                     // enable/disable debug
-var debugTargetId = "compare-debug";         // Id debug div
+var debugEnabled = true;                     // Toggle debug
+var debugTargetId = "compare-debug";         // debug div output
 
 var debugElement = null;
 
@@ -467,22 +467,22 @@ function getCookie(name) {
     return null;
 }
 
-// saved IDs
+// Helpers for saved IDs
 function getSavedAssetIds() {
     var cookieValue = getCookie(compareCookieName);
     if (!cookieValue) return [];
 
-    // Try plain JSON
+    // Try plain JSON 
     try {
         var parsedPlain = JSON.parse(cookieValue);
         if (Array.isArray(parsedPlain)) {
             return parsedPlain;
         }
     } catch (e) {
-        // ignore and try encoded below
+        // ignore and try below
     }
 
-    // If encoded
+    // If encoded 
     try {
         var decoded = decodeURIComponent(cookieValue);
         var parsedDecoded = JSON.parse(decoded);
@@ -518,7 +518,7 @@ function toggleAssetId(assetId) {
     }
 }
 
-// Debug
+// Debug 
 function ensureDebugElement() {
     if (!debugEnabled) return null;
 
@@ -534,6 +534,7 @@ function ensureDebugElement() {
 
     var div = document.createElement("div");
     div.id = debugTargetId;
+    Optional: style it a little if you want
     div.style.fontFamily = "monospace";
     div.style.fontSize = "12px";
     div.style.marginBottom = "8px";
@@ -558,7 +559,7 @@ function updateDebugOutput() {
     }
 }
 
-// UI 
+// UI helpers
 function setButtonSavedState(button, isSaved) {
     if (isSaved) {
         // Saved state
@@ -566,7 +567,7 @@ function setButtonSavedState(button, isSaved) {
         button.classList.add("checkbox-checked-black-before", "saved");
         button.textContent = "Saved";
     } else {
-        // Unsaved state
+        // Unsaved/default state
         button.classList.remove("checkbox-checked-black-before", "saved");
         button.classList.add("checkbox-blank-black-before");
         button.innerHTML = '<span class="d-none-med">compare</span>';
@@ -577,6 +578,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var resultsContainer = document.getElementById("search-results");
     if (!resultsContainer) return;
 
+    // debug
     if (debugEnabled) {
         ensureDebugElement();
         updateDebugOutput();
@@ -588,9 +590,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var savedIds = getSavedAssetIds();
 
+    // Initialise buttons 
     for (var i = 0; i < buttons.length; i++) {
         var btn = buttons[i];
-        var assetId = btn.dataset.courseAssetId;
+        var assetId = btn.dataset.courseAssetId; 
 
         if (!assetId) continue;
 
