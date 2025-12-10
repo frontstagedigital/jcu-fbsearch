@@ -1,3 +1,31 @@
+// simple title case for UI labels - preserves acronyms, keeps small words lower-case mid-phrase
+function titleCaseLabel(str) {
+  var STOP = {
+    "and":1, "or":1, "of":1, "the":1, "in":1, "on":1, "at":1,
+    "for":1, "to":1, "a":1, "an":1, "by":1, "from":1, "with":1
+  };
+  function capWord(w) {
+    if (!w) return w;
+    if (/[A-Z]{2,}/.test(w)) return w;                // keep acronyms like JCU, ATAR
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  }
+  function capHyphenated(w) {
+    var parts = w.split("-");
+    for (var i = 0; i < parts.length; i++) parts[i] = capWord(parts[i]);
+    return parts.join("-");
+  }
+  var parts = String(str || "").trim().split(/\s+/);
+  if (!parts.length) return str;
+  for (var i = 0; i < parts.length; i++) {
+    var raw = parts[i], lower = raw.toLowerCase();
+    var isEdge = (i === 0 || i === parts.length - 1);
+    parts[i] = (!isEdge && STOP[lower])
+      ? lower
+      : (raw.indexOf("-") > -1 ? capHyphenated(raw) : capWord(raw));
+  }
+  return parts.join(" ");
+}
+
 /* === render/results.js === */
 var Results = (function () {
   // -------- JCU helpers --------
@@ -14,34 +42,6 @@ var Results = (function () {
       }
     }
     return [];
-  }
-
-  // simple title case for UI labels - preserves acronyms, keeps small words lower-case mid-phrase
-  function titleCaseLabel(str) {
-    var STOP = {
-      "and":1, "or":1, "of":1, "the":1, "in":1, "on":1, "at":1,
-      "for":1, "to":1, "a":1, "an":1, "by":1, "from":1, "with":1
-    };
-    function capWord(w) {
-      if (!w) return w;
-      if (/[A-Z]{2,}/.test(w)) return w;                // keep acronyms like JCU, ATAR
-      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
-    }
-    function capHyphenated(w) {
-      var parts = w.split("-");
-      for (var i = 0; i < parts.length; i++) parts[i] = capWord(parts[i]);
-      return parts.join("-");
-    }
-    var parts = String(str || "").trim().split(/\s+/);
-    if (!parts.length) return str;
-    for (var i = 0; i < parts.length; i++) {
-      var raw = parts[i], lower = raw.toLowerCase();
-      var isEdge = (i === 0 || i === parts.length - 1);
-      parts[i] = (!isEdge && STOP[lower])
-        ? lower
-        : (raw.indexOf("-") > -1 ? capHyphenated(raw) : capWord(raw));
-    }
-    return parts.join(" ");
   }
 
   function courseAssetId(result) {
