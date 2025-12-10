@@ -452,7 +452,7 @@ function setCookie(name, value, days) {
         date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
         expires = "; expires=" + date.toUTCString();
     }
-    document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
+    document.cookie = name + "=" + value + expires + "; path=/";
 }
 
 function getCookie(name) {
@@ -461,7 +461,7 @@ function getCookie(name) {
     for (var i = 0; i < ca.length; i++) {
         var c = ca[i].trim();
         if (c.indexOf(nameEQ) === 0) {
-            return decodeURIComponent(c.substring(nameEQ.length, c.length));
+            return c.substring(nameEQ.length, c.length);
         }
     }
     return null;
@@ -472,12 +472,30 @@ function getSavedAssetIds() {
     var cookieValue = getCookie(compareCookieName);
     if (!cookieValue) return [];
 
+    // Try plain JSON
     try {
-        var parsed = JSON.parse(cookieValue);
-        return Array.isArray(parsed) ? parsed : [];
+        var parsedPlain = JSON.parse(cookieValue);
+        if (Array.isArray(parsedPlain)) {
+            return parsedPlain;
+        }
     } catch (e) {
-        return [];
+        // ignore and try encoded below
     }
+
+    // If encoded
+    try {
+        var decoded = decodeURIComponent(cookieValue);
+        var parsedDecoded = JSON.parse(decoded);
+        if (Array.isArray(parsedDecoded)) {
+            // Normalise 
+            saveAssetIds(parsedDecoded);
+            return parsedDecoded;
+        }
+    } catch (e2) {
+        // empty
+    }
+
+    return [];
 }
 
 function saveAssetIds(ids) {
