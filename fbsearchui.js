@@ -131,6 +131,40 @@
     }
   }
 
+  function applyQueryToFormAppend(form, qsOrUrl, extraExclusions){
+    var exclude = Object.create(null);
+
+    for (var i = 0; i < stripParams.length; i++) exclude[String(stripParams[i])] = true;
+    if (extraExclusions && extraExclusions.length) {
+        for (var j = 0; j < extraExclusions.length; j++) exclude[String(extraExclusions[j])] = true;
+    }
+
+    var search = qsOrUrl || "";
+    try { if (/^https?:/i.test(qsOrUrl)) search = new URL(qsOrUrl, window.location.href).search; } catch(e) {}
+    if (!search) search = window.location.search || "";
+    if (search.charAt(0) === "?") search = search.slice(1);
+    if (!search) return;
+
+    var pairs = search.split("&");
+    for (var p = 0; p < pairs.length; p++) {
+        var raw = pairs[p];
+        if (!raw) continue;
+        var eq = raw.indexOf("=");
+        var k = eq >= 0 ? raw.slice(0, eq) : raw;
+        var v = eq >= 0 ? raw.slice(eq + 1) : "";
+        // decode key and value (convert + to space first)
+        k = k ? decodeURIComponent(k.replace(/\+/g, " ")) : "";
+        v = v ? decodeURIComponent(v.replace(/\+/g, " ")) : "";
+        if (!k || exclude[k]) continue;
+
+        // IMPORTANT: append always adds a new hidden field, does not check for existing ones
+        if (!hasNonHiddenControl(form, k)) {
+        appendHidden(form, k, v);
+        }
+    }
+  }
+
+
   function updateControlLabel(optionEl){
     var wrapper = optionEl.closest(".select-wrapper");
     if (!wrapper) return;
@@ -202,7 +236,8 @@
       if (!wrapper) return;
 
       // Start from current URL
-      applyQueryToForm(form, window.location.search);
+      //applyQueryToForm(form, window.location.search);
+      applyQueryToFormAppend(form, window.location.search);
 
       // Collect all checked boxes in THIS featured multiselect only
       var checks = wrapper.querySelectorAll('input[type="checkbox"]:checked');
@@ -253,7 +288,9 @@
       e.stopPropagation(); e.preventDefault();
 
       // Start from current URL
-      applyQueryToForm(form, window.location.search);
+      //applyQueryToForm(form, window.location.search);
+      applyQueryToFormAppend(form, window.location.search);
+
 
       // Mirror modal selections
       if (mirrorFiltersFromModal) {
