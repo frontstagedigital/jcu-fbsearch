@@ -45,6 +45,14 @@
     input.value = value == null ? "" : String(value);
   }
 
+  function appendHidden(form, name, value){
+    var input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value == null ? "" : String(value);
+    form.appendChild(input);
+  }
+
   // check if the form already contains a non-hidden control with this name
   function hasNonHiddenControl(form, name){
     var nodes = form.querySelectorAll('[name]');
@@ -207,7 +215,7 @@
       for (var i = 0; i < checks.length; i++) {
         var cb = checks[i];
         if (!cb.name) continue;
-        setHidden(form, cb.name, normalisePlusToSpace(cb.value || ""));
+        appendHidden(form, cb.name, normalisePlusToSpace(cb.value || ""));
       }
 
       // Submit
