@@ -92,10 +92,18 @@ var Results = (function () {
 
   function linkAndTitle(result) {
     var link = result.clickTrackingUrl || result.liveUrl || "#";
-    var title = (result.title || "Untitled").replace(/ - JCU Australia$/, "");
+
+    // prefer metadata pageName (array or string)
+    var md = (result && result.listMetadata) || {};
+    var pageNames = firstNonEmptyArray(md.pageName, md.pagename, md.PageName);
+    var fromMeta = pageNames.length ? String(pageNames[0]).trim() : "";
+
+    // fall back to result.title, stripping the site suffix if present
+    var fallback = (result.title || "Untitled").replace(/ - JCU Australia$/, "");
+
     return {
       link: link,
-      title: title
+      title: fromMeta || fallback
     };
   }
 
