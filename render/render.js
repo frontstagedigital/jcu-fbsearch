@@ -489,23 +489,48 @@ var HeaderRow = (function () {
     return b.toString();
   }
 
-  // UPDATED: matches requested markup exactly
   function selected(sd) {
-    var chips = SearchData.selectedChips(sd);
-    if (!chips.length) return "";
-    var b = Html.buffer();
+    var chips = [];
+    for (var i = 0; i < sd.facets.length; i++) {
+      var facet = sd.facets[i];
+      var vals = facet.allValues || [];
+      for (var j = 0; j < vals.length; j++) {
+        var v = vals[j];
+        if (!v || !v.selected) continue;
+        var label = v.label || "";
+        var ld = (facet.labels && facet.labels[label]) || {};
+        var qsp = ld.queryParam || ""; // e.g. "f.Location|campus=Brisbane"
+        var name = "", value = "";
+        if (qsp) {
+          var eq = qsp.indexOf("=");
+          if (eq > -1) {
+            name  = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+            value = qsp.slice(eq + 1); // keep token as-is
+          }
+        }
+        // fallback if queryParam missing
+        if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+        if (!value) value = encodeURIComponent((v.data != null && v.data !== "") ? v.data : label).replace(/%20/g, "+");
 
+        chips.push({ label: label, name: name, value: value });
+      }
+    }
+    if (!chips.length) return "";
+
+    var b = Html.buffer();
     b.add('<div id="selected-filters" class="columns flex-nowrap align-center gap-050-column">');
-    for (var i = 0; i < chips.length; i++) {
+    for (var k = 0; k < chips.length; k++) {
+      var c = chips[k];
       b.add(
-        '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active">' +
-          Html.esc(titleCaseLabel(chips[i].label)) +
+        '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
+        ' data-remove-name="' + Html.esca(c.name) + '"' +
+        ' data-remove-value="' + Html.esca(c.value) + '">' +
+        Html.esc(titleCaseLabel(c.label)) +
         '</span>'
       );
     }
     b.add('<span class="f-underline pointer">Clear all</span>');
     b.add('</div>');
-
     return b.toString();
   }
 

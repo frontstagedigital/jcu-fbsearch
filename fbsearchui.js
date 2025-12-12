@@ -236,8 +236,8 @@
       if (!wrapper) return;
 
       // Start from current URL
-      //applyQueryToForm(form, window.location.search);
-      applyQueryToFormAppend(form, window.location.search);
+      applyQueryToForm(form, window.location.search);
+      //applyQueryToFormAppend(form, window.location.search);
 
       // Collect all checked boxes in THIS featured multiselect only
       var checks = wrapper.querySelectorAll('input[type="checkbox"]:checked');
@@ -288,8 +288,8 @@
       e.stopPropagation(); e.preventDefault();
 
       // Start from current URL
-      //applyQueryToForm(form, window.location.search);
-      applyQueryToFormAppend(form, window.location.search);
+      applyQueryToForm(form, window.location.search);
+      //applyQueryToFormAppend(form, window.location.search);
 
 
       // Mirror modal selections
