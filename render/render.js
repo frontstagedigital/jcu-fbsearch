@@ -29,6 +29,12 @@ function titleCaseLabel(str) {
 /* === render/results.js === */
 var Results = (function () {
   // -------- JCU helpers --------
+  function firstKey(obj, orElse) {
+    if (!obj) return orElse;
+    for (var k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) return k;
+    return orElse;
+  }
+
   function firstNonEmptyArray() {
     for (var i = 0; i < arguments.length; i++) {
       var a = arguments[i];
@@ -357,8 +363,15 @@ var Results = (function () {
           if (parsed && parsed[key]) v = parsed[key];
         }
       } catch (e) {}
+
+      // if still not set, prefer the first view in viewOptions
+      if (!v && Gx && Gx.viewOptions) {
+        v = firstKey(Gx.viewOptions, null);
+      }
+
       return v || "default";
     }
+
     var view = getViewFrom(G);
     if (view === "grid") return grid(api);
     if (view === "condensed") return condensed(api);
@@ -766,7 +779,10 @@ var CountBar = (function () {
     var parsedQS = Url.parseQueryString((G && G.server_query_string) || "");
     var key = (G && typeof G.view_param === "string" && G.view_param) ? G.view_param : "ui_view";
     var paramName = key;
-    var currentView = (G && typeof G.get_view === "string" && G.get_view) ? G.get_view : (parsedQS[key] || firstKey(viewOptions, "default"));
+    var currentView =
+      (G && typeof G.get_view === "string" && G.get_view) ||
+      (parsedQS[key]) ||
+      firstKey(viewOptions, "default");
     var b = Html.buffer();
     b.add('<div class="columns space-between align-center">');
     b.add('<div id="search-result-count" class="searchresults__count f-bold">');
