@@ -309,6 +309,34 @@ var Results = (function () {
     return b.toString();
   }
 
+  //Page view for non-course results
+  function pageItem(result) {
+    var lt = linkAndTitle(result);
+    var desc = description150(result);
+
+    var b = Html.buffer();
+    b.add('<div class="border bg-white p-150 m-b-100 js-fbsearch-result-item">');
+    b.add('  <a href="' + Html.esc(lt.link) + '"><h3 class="m-t-0 m-b-075">' + Html.esc(lt.title) + '</h3></a>');
+    if (desc) b.add('  <p class="m-0">' + Html.esc(desc) + '</p>');
+    b.add('</div>');
+    return b.toString();
+  }
+
+  function page(api) {
+    var results = Safe.get(api, "response.resultPacket.results", []);
+    var b = Html.buffer();
+    b.add('<div id="search-results-page" class="p-t-100 p-b-100">');
+    for (var i = 0; i < results.length; i++) b.add(pageItem(results[i]));
+    b.add('</div>');
+    b.add(Pager.render(api, GLOBALS));
+    return b.toString();
+  }
+
+
+
+
+
+
   function render(api, G) {
     function getViewParamName(Gx) {
       return (Gx && typeof Gx.view_param === "string" && Gx.view_param) ? Gx.view_param : "ui_view";
@@ -329,6 +357,7 @@ var Results = (function () {
     var view = getViewFrom(G);
     if (view === "grid") return grid(api);
     if (view === "condensed") return condensed(api);
+    if (view === "page") return page(api);
     return list(api);
   }
 
@@ -487,6 +516,8 @@ var FeaturedFilters = (function () {
 /* === render/header-row.js === */
 var HeaderRow = (function () {
   function featured(sd, G) {
+    if (G && G.hideFacets) return "";
+
     var b = Html.buffer();
     b.add('<div class="flex space-apart p-b-250">');
     b.add(FeaturedFilters.render(sd, G));
@@ -627,6 +658,8 @@ var FiltersModal = (function () {
   }
 
   function render(sd) {
+    if (G && G.hideFacets) return "";
+    
     var b = Html.buffer();
     b.add('<div class="w-100 h-100 bg-neutral-1 opacity-50 main-menu m-t-500" id="filters-modal">');
     b.add('<div id="filters-modal--wrapper" class="main__menu--wrapper search-filters-modal flex space-end">');
