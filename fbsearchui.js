@@ -535,6 +535,50 @@ document.addEventListener("DOMContentLoaded", function () {
         "#filters-panel #study-level-content .js-fbsearch-filters-modal--label-text[data-filter-name='research']",
         copy.studyLevelResearch
     );
+
+
+
+    var form = document.getElementById('bannerCourseSearchForm');
+    var switcher = document.querySelector('.js-search-collection-switcher');
+    if (!form || !switcher) return;
+
+    var buttons = switcher.querySelectorAll('.js-search-collection-switcher-button');
+
+    function getActiveButton() {
+        return (switcher.querySelector('.js-search-collection-switcher-button[active]'));
+    }
+
+    function updateFormAction() {
+        var btn = getActiveButton();
+        if (!btn) return;
+
+        var collection = btn.getAttribute('collection'); // "courses" or "global"
+        var url = null;
+
+        if (collection === 'courses') url = form.dataset.coursesSearch;
+        else if (collection === 'global') url = form.dataset.globalSearch;
+
+        if (url) form.setAttribute('action', url);
+    }
+
+    switcher.addEventListener('click', function (e) {
+        var btn = e.target.closest('.js-search-collection-switcher-button');
+        if (!btn || !switcher.contains(btn)) return;
+
+        // clear existing active state
+        buttons.forEach(function (b) {
+            b.removeAttribute('active');
+        });
+
+        // set active on clicked
+        btn.setAttribute('active', '');
+
+        updateFormAction();
+    });
+
+    updateFormAction();
+
+
 });
 
 
