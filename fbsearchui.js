@@ -544,40 +544,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var buttons = switcher.querySelectorAll('.js-search-collection-switcher-button');
 
-    function getActiveButton() {
-        return (switcher.querySelector('.js-search-collection-switcher-button[active]'));
-    }
-
-    function updateFormAction() {
-        var btn = getActiveButton();
-        if (!btn) return;
-
-        var collection = btn.getAttribute('collection'); // "courses" or "global"
-        var url = null;
-
-        if (collection === 'courses') url = form.dataset.coursesSearch;
-        else if (collection === 'global') url = form.dataset.globalSearch;
-
-        if (url) form.setAttribute('action', url);
-    }
-
     switcher.addEventListener('click', function (e) {
         var btn = e.target.closest('.js-search-collection-switcher-button');
         if (!btn || !switcher.contains(btn)) return;
 
-        // clear existing active state
-        buttons.forEach(function (b) {
-            b.removeAttribute('active');
-        });
+        // If this button is already active, do nothing
+        if (btn.hasAttribute('active')) return;
 
-        // set active on clicked
+        // Update active state
+        buttons.forEach(function (b) { b.removeAttribute('active'); });
         btn.setAttribute('active', '');
 
-        updateFormAction();
+        // Switch form action based on the chosen collection
+        var collection = btn.getAttribute('collection'); // "courses" or "global"
+        var url = null;
+        if (collection === 'courses') url = form.dataset.coursesSearch;
+        else if (collection === 'global') url = form.dataset.globalSearch;
+
+        if (url && url !== form.getAttribute('action')) {
+        form.setAttribute('action', url);
+        }
     });
-
-    updateFormAction();
-
 
 });
 
