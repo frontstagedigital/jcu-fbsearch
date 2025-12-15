@@ -536,8 +536,6 @@ document.addEventListener("DOMContentLoaded", function () {
         copy.studyLevelResearch
     );
 
-
-
     var form = document.getElementById('bannerCourseSearchForm');
     var switcher = document.querySelector('.js-search-collection-switcher');
     if (!form || !switcher) return;
@@ -548,45 +546,35 @@ document.addEventListener("DOMContentLoaded", function () {
         return (switcher.querySelector('.js-search-collection-switcher-button[active]'));
     }
 
-    function data(form, key) {
-        return (form.dataset && form.dataset[key]) || form.getAttribute('data-' + key.replace(/[A-Z]/g, m => '-' + m.toLowerCase()));
-    }
-
     function updateFormAction() {
         var btn = getActiveButton();
         if (!btn) return;
 
         var collection = btn.getAttribute('collection'); // "courses" or "global"
         var url = null;
-        if (collection === 'courses') url = data(form, 'coursesSearch');
-        else if (collection === 'global') url = data(form, 'globalSearch');
 
-        if (url && url !== form.getAttribute('action')) {
-            form.setAttribute('action', url);
-        }
+        if (collection === 'courses') url = form.dataset.coursesSearch;
+        else if (collection === 'global') url = form.dataset.globalSearch;
+
+        if (url) form.setAttribute('action', url);
     }
 
     switcher.addEventListener('click', function (e) {
-        var node = e.target;
-        while (node && node !== switcher && !(node.classList && node.classList.contains('js-search-collection-switcher-button'))) {
-            node = node.parentNode;
-        }
-        var btn = node && node.classList && node.classList.contains('js-search-collection-switcher-button') ? node : null;
-        if (!btn) return;
+        var btn = e.target.closest('.js-search-collection-switcher-button');
+        if (!btn || !switcher.contains(btn)) return;
 
-        if (btn.hasAttribute('active')) return;
-
-        // Clear existing active state
+        // clear existing active state
         buttons.forEach(function (b) {
             b.removeAttribute('active');
         });
 
-        // Set active on clicked
+        // set active on clicked
         btn.setAttribute('active', '');
 
-        // Update action 
         updateFormAction();
     });
+
+    updateFormAction();
 
 });
 
