@@ -62,23 +62,23 @@ var Results = (function () {
         seen[v] = true;
         out.push(v);
       }
-
-      function uniqJoinedPipe(arr) {
-        if (!arr) return "";
-        var seen = Object.create ? Object.create(null) : {};
-        var out = [];
-        for (var i = 0; i < arr.length; i++) {
-          var v = String(arr[i] || "").trim();
-          if (!v) continue;
-          if (!seen[v]) {
-            seen[v] = true;
-            out.push(v);
-          }
-        }
-        return out.join(" | ");
-      }
     }
     return out.join(", ");
+  }
+
+  function uniqJoinedPipe(arr) {
+    if (!arr) return "";
+    var seen = Object.create ? Object.create(null) : {};
+    var out = [];
+    for (var i = 0; i < arr.length; i++) {
+      var v = String(arr[i] || "").trim();
+      if (!v) continue;
+      if (!seen[v]) {
+        seen[v] = true;
+        out.push(v);
+      }
+    }
+    return out.join(" | ");
   }
 
   function truncate(str, n) {
