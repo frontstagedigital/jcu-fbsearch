@@ -321,7 +321,7 @@ var Results = (function () {
     var desc = description150(result);
 
     var b = Html.buffer();
-    b.add('<div class="border bg-white p-150 m-b-100 js-fbsearch-result-item">');
+    b.add('<div class="grid-12 border bg-white p-150 m-b-100 js-fbsearch-result-item">');
     b.add('<div class="col-6-lrg col-12">');
     b.add('<a href="' + Html.esc(lt.link) + '"><h3 class="p-b-150 m-t-0">' + Html.esc(lt.title) + '</h3></a>');
     if (desc) b.add('<p>' + Html.esc(desc) + '</p>');
