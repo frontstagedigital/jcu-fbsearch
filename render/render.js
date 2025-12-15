@@ -657,9 +657,9 @@ var FiltersModal = (function () {
     return b.toString();
   }
 
-  function render(sd) {
+  function render(sd, G) {
     if (G && G.hideFacets) return "";
-    
+
     var b = Html.buffer();
     b.add('<div class="w-100 h-100 bg-neutral-1 opacity-50 main-menu m-t-500" id="filters-modal">');
     b.add('<div id="filters-modal--wrapper" class="main__menu--wrapper search-filters-modal flex space-end">');

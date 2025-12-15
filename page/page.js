@@ -8,7 +8,7 @@ var Page = (function () {
     b.add(CountBar.render(api, G));
     b.add(Results.render(api, G));
     b.add("</div></div>");
-    b.add(FiltersModal.render(sd));
+    b.add(FiltersModal.render(sd, G));
     return b.toString();
   }
   return { main: main };
