@@ -691,6 +691,13 @@ var FiltersModal = (function () {
 
 /* === render/count-bar.js === */
 var CountBar = (function () {
+
+  function ownKeyCount(obj){
+    var n = 0; if (!obj) return 0;
+    for (var k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) n++;
+    return n;
+  }
+
   function firstKey(obj, orElse) {
     if (!obj) return orElse;
     for (var k in obj)
@@ -762,7 +769,9 @@ var CountBar = (function () {
     b.add('</div>');
     b.add('<div class="flex gap-100 flex-wrap">');
     b.add(selectBlock('Sort by', 'sort', currentSort, sortOptions));
-    b.add(selectBlock('View', paramName, currentView, viewOptions));
+    if (ownKeyCount(viewOptions) > 1) {
+      b.add(selectBlock('View', paramName, currentView, viewOptions));
+    }
     b.add('</div>');
     b.add('</div>');
     return b.toString();
