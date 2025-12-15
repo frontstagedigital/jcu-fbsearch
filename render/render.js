@@ -316,8 +316,13 @@ var Results = (function () {
 
     var b = Html.buffer();
     b.add('<div class="border bg-white p-150 m-b-100 js-fbsearch-result-item">');
-    b.add('  <a href="' + Html.esc(lt.link) + '"><h3 class="m-t-0 m-b-075">' + Html.esc(lt.title) + '</h3></a>');
-    if (desc) b.add('  <p class="m-0">' + Html.esc(desc) + '</p>');
+    b.add('<div class="col-6-lrg col-12">');
+    b.add('<a href="' + Html.esc(lt.link) + '"><h3 class="p-b-150 m-t-0">' + Html.esc(lt.title) + '</h3></a>');
+    if (desc) b.add('<p>' + Html.esc(desc) + '</p>');
+    b.add('</div>');
+    b.add('<div class="col-12"><p class="btn-cta m-0">');
+    b.add('<a href="' + Html.esc(lt.link) + '" class="f-primary-dark">View Page</a>');
+    b.add('</p></div>');    
     b.add('</div>');
     return b.toString();
   }
