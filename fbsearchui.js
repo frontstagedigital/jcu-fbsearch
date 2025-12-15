@@ -558,12 +558,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Switch form action based on the chosen collection
         var collection = btn.getAttribute('collection'); // "courses" or "global"
+        console.log('[FBSearchUI] Switching to collection:', collection);
         var url = null;
         if (collection === 'courses') url = form.dataset.coursesSearch;
         else if (collection === 'global') url = form.dataset.globalSearch;
 
+        console.log('[FBSearchUI] Target form action URL:', url);
         if (url && url !== form.getAttribute('action')) {
-            console.log('[FBSearchUI] Switching search collection to:', collection);
+            console.log('[FBSearchUI] Updating form action to:', url);
             form.setAttribute('action', url);
         }
     });
