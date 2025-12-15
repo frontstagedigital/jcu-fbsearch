@@ -544,30 +544,48 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var buttons = switcher.querySelectorAll('.js-search-collection-switcher-button');
 
-    switcher.addEventListener('click', function (e) {
-        console.log('[FBSearchUI] Search collection switcher clicked');
-        var btn = e.target.closest('.js-search-collection-switcher-button');
-        if (!btn || !switcher.contains(btn)) return;
+    function getActiveButton() {
+        return (switcher.querySelector('.js-search-collection-switcher-button[active]'));
+    }
 
-        // If this button is already active, do nothing
-        if (btn.hasAttribute('active')) return;
+    function data(form, key) {
+        return (form.dataset && form.dataset[key]) || form.getAttribute('data-' + key.replace(/[A-Z]/g, m => '-' + m.toLowerCase()));
+    }
 
-        // Update active state
-        buttons.forEach(function (b) { b.removeAttribute('active'); });
-        btn.setAttribute('active', '');
+    function updateFormAction() {
+        var btn = getActiveButton();
+        if (!btn) return;
 
-        // Switch form action based on the chosen collection
         var collection = btn.getAttribute('collection'); // "courses" or "global"
-        console.log('[FBSearchUI] Switching to collection:', collection);
         var url = null;
-        if (collection === 'courses') url = form.dataset.coursesSearch;
-        else if (collection === 'global') url = form.dataset.globalSearch;
+        if (collection === 'courses') url = data(form, 'coursesSearch');
+        else if (collection === 'global') url = data(form, 'globalSearch');
 
-        console.log('[FBSearchUI] Target form action URL:', url);
         if (url && url !== form.getAttribute('action')) {
-            console.log('[FBSearchUI] Updating form action to:', url);
             form.setAttribute('action', url);
         }
+    }
+
+    switcher.addEventListener('click', function (e) {
+        var node = e.target;
+        while (node && node !== switcher && !(node.classList && node.classList.contains('js-search-collection-switcher-button'))) {
+            node = node.parentNode;
+        }
+        var btn = node && node.classList && node.classList.contains('js-search-collection-switcher-button') ? node : null;
+        if (!btn) return;
+
+        if (btn.hasAttribute('active')) return;
+
+        // Clear existing active state
+        buttons.forEach(function (b) {
+            b.removeAttribute('active');
+        });
+
+        // Set active on clicked
+        btn.setAttribute('active', '');
+
+        // Update action 
+        updateFormAction();
     });
 
 });
