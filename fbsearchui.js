@@ -545,6 +545,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var buttons = switcher.querySelectorAll('.js-search-collection-switcher-button');
 
     switcher.addEventListener('click', function (e) {
+        console.log('[FBSearchUI] Search collection switcher clicked');
         var btn = e.target.closest('.js-search-collection-switcher-button');
         if (!btn || !switcher.contains(btn)) return;
 
@@ -562,7 +563,8 @@ document.addEventListener("DOMContentLoaded", function () {
         else if (collection === 'global') url = form.dataset.globalSearch;
 
         if (url && url !== form.getAttribute('action')) {
-        form.setAttribute('action', url);
+            console.log('[FBSearchUI] Switching search collection to:', collection);
+            form.setAttribute('action', url);
         }
     });
 
