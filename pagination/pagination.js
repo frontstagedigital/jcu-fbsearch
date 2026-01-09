@@ -1,37 +1,34 @@
 var Pager = (function () {
   function normaliseQs(qs) {
     // turn "?a=1&&b=2&" into "a=1&b=2"
-    var s = String(qs || "").replace(/^\?+/, "").replace(/&+$/,"");
-    // collapse accidental doubles like && that might appear in server strings
+    var s = String(qs || "").replace(/^\?+/, "").replace(/&+$/, "");
     s = s.replace(/&{2,}/g, "&");
     return s;
   }
 
   function cleanedQuery(qs) {
-  // Remove start_rank/profile/collection while preserving order and duplicates for other params.
-  try {
-    var s = String(qs || "");
-    if (s.charAt(0) === "?") s = s.slice(1);
-    if (!s) return "";
-    var parts = s.split("&");
-    var out = [];
-    for (var i = 0; i < parts.length; i++) {
-      var raw = parts[i];
-      if (!raw) continue;
-      var eq = raw.indexOf("=");
-      var k = eq >= 0 ? raw.slice(0, eq) : raw;
-      // decode key for comparison (convert + to space first)
-      var kDecoded = k ? decodeURIComponent(k.replace(/\+/g, " ")) : "";
-      if (!kDecoded) continue;
-      if (kDecoded === "start_rank" || kDecoded === "profile" || kDecoded === "collection") continue;
-      out.push(raw); // keep raw to preserve encoding and duplicates
+    // Remove start_rank/profile/collection while preserving order and raw encoding
+    try {
+      var s = normaliseQs(qs);
+      if (!s) return "";
+      var parts = s.split("&");
+      var out = [];
+      for (var i = 0; i < parts.length; i++) {
+        var raw = parts[i];
+        if (!raw) continue;
+        var eq = raw.indexOf("=");
+        var k = eq >= 0 ? raw.slice(0, eq) : raw;
+        // decode key for comparison only
+        var kDecoded = k ? decodeURIComponent(k.replace(/\+/g, " ")) : "";
+        if (!kDecoded) continue;
+        if (kDecoded === "start_rank" || kDecoded === "profile" || kDecoded === "collection") continue;
+        out.push(raw); // keep raw to preserve original encoding and duplicates
+      }
+      return out.join("&");
+    } catch (e) {
+      return String(qs || "").replace(/^\?/, "");
     }
-    return out.join("&");
-  } catch (e) {
-    return String(qs || "").replace(/^\?/, "");
   }
-}
-
 
   function pageSize(sum) {
     var start = sum.currStart || 1;
@@ -46,9 +43,9 @@ var Pager = (function () {
 
   function hrefForStart(qs, start) {
     var base = cleanedQuery(qs);
-    var usp = new URLSearchParams(base);
-    usp.set("start_rank", String(start)); // overwrites if present
-    return "?" + usp.toString();
+    var pair = "start_rank=" + String(start);
+    // base has no start_rank now, so just append
+    return "?" + (base ? base + "&" : "") + pair;
   }
 
   function render(api, G) {
