@@ -74,7 +74,7 @@ var Pager = (function () {
     // prev
     if (currentPage > 1) {
       var prevStart = Math.max(1, currentStart - size);
-      b.add('    <li><a class="m-r-050 btn secondary-one border-none p-t-050 p-b-050 p-l-100 p-r-100 m-b-150 f-overline" href="' +
+      b.add('    <li><a class="external-disabled m-r-050 btn secondary-one border-none p-t-050 p-b-050 p-l-100 p-r-100 m-b-150 f-overline" href="' +
             Html.esc(hrefForStart(qs, prevStart)) + '">Prev</a></li>');
     }
 
@@ -82,7 +82,7 @@ var Pager = (function () {
     for (var p = startPage; p <= endPage; p++) {
       var startRank = (p - 1) * size + 1;
       var isActive = (p === currentPage);
-      var cls = 'd-none-sm m-r-0125 btn secondary-one border-none p-t-050 p-b-050 p-l-100 p-r-100 m-b-150 f-overline' +
+      var cls = 'external-disabled d-none-sm m-r-0125 btn secondary-one border-none p-t-050 p-b-050 p-l-100 p-r-100 m-b-150 f-overline' +
                 (isActive ? ' active' : '');
       var aria = isActive ? ' aria-current="page"' : '';
       b.add('    <li><a class="' + cls + '" href="' +
@@ -92,7 +92,7 @@ var Pager = (function () {
     // next
     if (currentPage < totalPages) {
       var nextStart = currentStart + size;
-      b.add('    <li><a class="btn secondary-one border-none p-t-050 p-b-050 p-l-100 p-r-100 m-b-150 f-overline" href="' +
+      b.add('    <li><a class="external-disabled btn secondary-one border-none p-t-050 p-b-050 p-l-100 p-r-100 m-b-150 f-overline" href="' +
             Html.esc(hrefForStart(qs, nextStart)) + '">Next</a></li>');
     }
 
