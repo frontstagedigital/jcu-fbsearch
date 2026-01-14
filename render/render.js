@@ -624,31 +624,8 @@ var FeaturedFilters = (function () {
 })();
 
 
-//* === render/header-row.js === */
+/* === render/header-row.js === */
 var HeaderRow = (function () {
-
-  // local copy so we do not depend on FeaturedFilters scope
-  function splitQspFromToggleUrlLocal(url) {
-    if (!url || typeof url !== "string") return { name: "", value: "" };
-    var qIndex = url.indexOf("?");
-    var q = qIndex >= 0 ? url.slice(qIndex + 1) : url;
-    if (!q) return { name: "", value: "" };
-
-    var parts = q.split("&");
-    for (var i = parts.length - 1; i >= 0; i--) {
-      var seg = parts[i];
-      if (!seg) continue;
-      var eq = seg.indexOf("=");
-      if (eq < 0) continue;
-      var rawName = seg.slice(0, eq);
-      var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
-      if (name.indexOf("f.") === 0) {
-        return { name: name, value: seg.slice(eq + 1) }; // keep RHS encoded verbatim
-      }
-    }
-    return { name: "", value: "" };
-  }
-
   function featured(sd, G) {
     if (G && G.hideFacets) return "";
 
@@ -662,7 +639,7 @@ var HeaderRow = (function () {
     return b.toString();
   }
 
-  // updated: prefer toggleUrl and put encoded RHS into data-remove-name
+  // REPLACED: prefer toggleUrl tokens for chip attributes
   function selected(sd) {
     var chips = [];
     for (var i = 0; i < sd.facets.length; i++) {
@@ -673,29 +650,29 @@ var HeaderRow = (function () {
         if (!v || !v.selected) continue;
 
         var label = v.label || "";
-        var ld = (facet.labels && facet.labels[label]) || {};
+        var ld    = (facet.labels && facet.labels[label]) || {};
 
+        // 1) Prefer toggleUrl (keeps RHS encoded exactly, e.g. pathways+and+bridging+programs)
+        // 2) Fall back to queryParam
+        // 3) Final fallback: encode v.data or label
         var name = "", value = "";
 
-        // 1) toggleUrl wins
         var toggle = (ld.toggleUrl || v.toggleUrl || "");
         if (toggle) {
-          var t = splitQspFromToggleUrlLocal(toggle);
-          if (t.name)  name = t.name;     // decoded LHS
-          if (t.value) value = t.value;   // encoded RHS, eg "pathways+and+bridging+programs"
+          var t = splitQspFromToggleUrl(toggle);
+          if (t.name)  name  = t.name;   // decoded name is fine for LHS
+          if (t.value) value = t.value;  // encoded RHS token we need for removal
         }
 
-        // 2) fallback to queryParam if needed
         if ((!name || !value) && (ld.queryParam || v.queryParam)) {
           var qsp = (ld.queryParam || v.queryParam);
           var eq = qsp.indexOf("=");
           if (eq > -1) {
             if (!name)  name  = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-            if (!value) value = qsp.slice(eq + 1); // keep RHS encoded
+            if (!value) value = qsp.slice(eq + 1); // keep RHS as-is
           }
         }
 
-        // 3) final fallbacks
         if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
         if (!value) value = encodeURIComponent(((v.data != null && v.data !== "") ? v.data : label)).replace(/%20/g, "+");
 
@@ -708,11 +685,10 @@ var HeaderRow = (function () {
     b.add('<div id="selected-filters" class="columns flex-nowrap align-center gap-050-column">');
     for (var k = 0; k < chips.length; k++) {
       var c = chips[k];
-      // per your request: encoded RHS goes into data-remove-name, LHS goes into data-remove-value
       b.add(
         '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
-        ' data-remove-name="' + Html.esca(c.value) + '"' +  // eg "pathways+and+bridging+programs"
-        ' data-remove-value="' + Html.esca(c.name) + '">' + // eg "f.Study level|pathways"
+        ' data-remove-name="' + Html.esca(c.name) + '"' +
+        ' data-remove-value="' + Html.esca(c.value) + '">' +
         Html.esc(formatFacetLabel(c.label, c.facetName)) +
         '</span>'
       );
