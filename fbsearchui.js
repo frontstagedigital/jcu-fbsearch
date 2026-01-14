@@ -559,6 +559,61 @@ document.addEventListener("DOMContentLoaded", function () {
         if (url) form.setAttribute('action', url);
     }
 
+    // Banner copy updater
+    var banner = document.getElementById('banner-header--wrapper');
+
+    function getActiveButton() {
+        return switcher.querySelector('.js-search-collection-switcher-button[active]');
+    }
+
+    function getActiveCollection() {
+    var btn = getActiveButton();
+        return btn ? (btn.getAttribute('collection') || 'courses') : 'courses';
+    }
+
+    function updateBannerCopy(collection) {
+    if (!banner) return;
+    var h1 = banner.querySelector('h1');
+    var p  = banner.querySelector('p');
+    if (!h1 || !p) return;
+
+    if (collection === 'courses') {
+        h1.textContent = 'Discover courses';
+        p.textContent  = 'Search undergraduate, postgraduate, research, and short courses across JCU';
+        banner.setAttribute('data-search-type', 'courses');
+    } else {
+        h1.textContent = 'Discover JCU';
+        p.textContent  = 'Search all JCU content - news, services, guides, events and more';
+        banner.setAttribute('data-search-type', 'global');
+    }
+    }
+
+    function syncUiToCollection() {
+        updateFormAction();
+        updateBannerCopy(getActiveCollection());
+    }
+
+    // click handler: after setting the new active state, call sync
+    switcher.addEventListener('click', function (e) {
+    var btn = e.target.closest('.js-search-collection-switcher-button');
+    if (!btn || !switcher.contains(btn)) return;
+
+    // no-op if already active
+    if (btn.hasAttribute('active')) return;
+
+    // clear existing active state
+    buttons.forEach(function (b) { b.removeAttribute('active'); });
+    // set active on clicked
+    btn.setAttribute('active', '');
+
+    // update form + banner together
+    syncUiToCollection();
+    });
+
+    // initial sync to match whatever is marked active in the DOM
+    syncUiToCollection();
+
+
     switcher.addEventListener('click', function (e) {
         var btn = e.target.closest('.js-search-collection-switcher-button');
         if (!btn || !switcher.contains(btn)) return;
