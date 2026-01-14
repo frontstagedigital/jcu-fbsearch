@@ -498,14 +498,21 @@ var FeaturedFilters = (function () {
 
       var label = v.label;
       var ld = (facet.labels && facet.labels[label]) || {};
-      // var qsp = (ld.queryParam || v.queryParam || "");
-      var toggle = (ld.toggleUrl || v.toggleUrl || "");
-      // var pair = splitQsp(qsp); // { name, value }
-      var qsp = (ld.queryParam || v.queryParam || "");
-      var toggle = ld.toggleUrl || "";
+
+      // Prefer precomputed queryParam, otherwise parse from toggleUrl (labels or value)
+      var qsp    = (ld.queryParam || v.queryParam || "");
+      var toggle = (ld.toggleUrl  || v.toggleUrl  || "");
+
       var pair = { name: "", value: "" };
-      if (qsp) pair = splitQsp(qsp);
-      else if (toggle) pair = splitQspFromToggleUrl(toggle);
+      if (qsp) {
+        pair = splitQsp(qsp);
+      }
+      if ((!pair.name || !pair.value) && toggle) {
+        var t = splitQspFromToggleUrl(toggle);
+        if (t.name)  pair.name  = t.name;
+        if (t.value) pair.value = t.value;  // stays encoded, e.g. 'pathways+and+bridging+programs'
+      }
+
 
       var checkedAttr = v.selected ? ' checked="checked"' : '';
 
