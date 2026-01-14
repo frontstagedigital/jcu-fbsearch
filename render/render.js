@@ -630,8 +630,8 @@ var HeaderRow = (function () {
           }
         }
         
-        if ((!name || !value) && ld.toggleUrl) {
-          var t = splitQspFromToggleUrl(ld.toggleUrl);
+        if ((!name || !value) && (ld.toggleUrl || v.toggleUrl)) {
+          var t = splitQspFromToggleUrl(ld.toggleUrl || v.toggleUrl);
           if (t.name) name = t.name;
           if (t.value) value = t.value;
         }
@@ -716,8 +716,8 @@ var FiltersModal = (function () {
         }
       }
 
-      if (!pName && !pValEncoded && ld.toggleUrl) {
-        var t = splitQspFromToggleUrl(ld.toggleUrl);
+      if (!pName && !pValEncoded && (ld.toggleUrl || v.toggleUrl)) {
+        var t = splitQspFromToggleUrl(ld.toggleUrl || v.toggleUrl);
         if (t.name) pName = t.name;
         if (t.value) pValEncoded = t.value;
       }
