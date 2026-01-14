@@ -462,7 +462,8 @@ document.addEventListener("DOMContentLoaded", function () {
         studentTypeInternational: "A student who is not an Australian or New Zealand citizen, or a permanent resident of Australia, studying at a campus in Australia or overseas",
         studyLevelPostgraduate: "Study after your first degree (Usually your second degree)",
         studyLevelUndergraduate: "Usually your first degree",
-        studyLevelResearch: "Advanced study including a research project"
+        studyLevelResearch: "Advanced study including a research project",
+        studyLevelPathways: "Preparation courses for uni entry"
     };
 
     function appendDescription(selector, text, extraClass) {
@@ -509,6 +510,12 @@ document.addEventListener("DOMContentLoaded", function () {
         "p-l-150"
     );
 
+    appendDescription(
+        ".js-fbsearch-featured-facet .study-level-wrapper div[data-study-level='pathways-and-bridging-programs'] label",
+        copy.studyLevelPathways,
+        "p-l-150"
+    );    
+
     // Filters panel - student type
     appendDescription(
         "#filters-panel #student-type-content .js-fbsearch-filters-modal--label-text[data-filter-name='domestic']",
@@ -535,6 +542,11 @@ document.addEventListener("DOMContentLoaded", function () {
         "#filters-panel #study-level-content .js-fbsearch-filters-modal--label-text[data-filter-name='research']",
         copy.studyLevelResearch
     );
+
+    appendDescription(
+        "#filters-panel #study-level-content .js-fbsearch-filters-modal--label-text[data-filter-name='pathways-and-bridging-programs']",
+        copy.studyLevelPathways
+    );        
 
     var form = document.getElementById('bannerCourseSearchForm');
     var switcher = document.querySelector('.js-search-collection-switcher');
