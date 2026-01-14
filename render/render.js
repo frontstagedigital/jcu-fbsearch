@@ -432,6 +432,35 @@ var FeaturedFilters = (function () {
     return { name: name, value: value };
   }
 
+  function splitQspFromToggleUrl(url) {
+    if (!url || typeof url !== "string") return { name: "", value: "" };
+    var qIndex = url.indexOf("?");
+    var q = qIndex >= 0 ? url.slice(qIndex + 1) : url;
+    if (!q) return { name: "", value: "" };
+
+    var parts = q.split("&");
+    // Walk from the end so we prefer the last f.* param if duplicated
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var seg = parts[i];
+      if (!seg) continue;
+      var eq = seg.indexOf("=");
+      if (eq < 0) continue;
+      var rawName = seg.slice(0, eq);
+      // decode '+' to space and %7C to '|'
+      var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
+      if (name.indexOf("f.") === 0) {
+        return { name: name, value: seg.slice(eq + 1) }; // keep RHS as-is (encoded)
+      }
+    }
+    return { name: "", value: "" };
+  }
+
+  // If you already have this:
+  function encodeForParam(val) {
+    return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
+  }
+
+
   // UPDATED: adds checked="checked" when v.selected is true
   function block(facet) {
     var facetName = facet.name;
@@ -469,9 +498,15 @@ var FeaturedFilters = (function () {
 
       var label = v.label;
       var ld = (facet.labels && facet.labels[label]) || {};
+      // var qsp = ld.queryParam || "";
+      // var toggle = ld.toggleUrl || "";
+      // var pair = splitQsp(qsp); // { name, value }
       var qsp = ld.queryParam || "";
       var toggle = ld.toggleUrl || "";
-      var pair = splitQsp(qsp); // { name, value }
+      var pair = { name: "", value: "" };
+      if (qsp) pair = splitQsp(qsp);
+      else if (toggle) pair = splitQspFromToggleUrl(toggle);
+
       var checkedAttr = v.selected ? ' checked="checked"' : '';
 
       if (isMulti) {
@@ -492,8 +527,13 @@ var FeaturedFilters = (function () {
           );
         }
         b.add('        <label class="pointer d-block">');
+
         //b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(label) + '"' + checkedAttr + '>');\
-        b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(pair.value || label) + '"' + checkedAttr + '>');
+        //b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(pair.value || label) + '"' + checkedAttr + '>');
+        var submitName = pair.name || (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+        var submitValToken = pair.value || encodeForParam((v.data != null && v.data !== "") ? v.data : label);
+        b.add('          <input type="checkbox" name="' + Html.esc(submitName) + '" value="' + Html.esc(submitValToken) + '"' + checkedAttr + '>');
+
         b.add('          <span>' + Html.esc(formatFacetLabel(label, facetName)) + '</span>');
         b.add('        </label>');
         b.add('      </div>');
@@ -589,6 +629,13 @@ var HeaderRow = (function () {
             value = qsp.slice(eq + 1); // keep token as-is
           }
         }
+        
+        if ((!name || !value) && ld.toggleUrl) {
+          var t = splitQspFromToggleUrl(ld.toggleUrl);
+          if (t.name) name = t.name;
+          if (t.value) value = t.value;
+        }
+
         // fallback if queryParam missing
         if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
         if (!value) value = encodeURIComponent((v.data != null && v.data !== "") ? v.data : label).replace(/%20/g, "+");
@@ -667,6 +714,12 @@ var FiltersModal = (function () {
           // RHS: keep encoded token as-is so it round-trips correctly
           pValEncoded = qsp.slice(eq + 1);
         }
+      }
+
+      if (!pName && !pValEncoded && ld.toggleUrl) {
+        var t = splitQspFromToggleUrl(ld.toggleUrl);
+        if (t.name) pName = t.name;
+        if (t.value) pValEncoded = t.value;
       }
 
       // Fallbacks if labels[...].queryParam is missing:
