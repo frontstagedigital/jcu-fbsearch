@@ -544,7 +544,7 @@ document.addEventListener("DOMContentLoaded", function () {
     );
 
     appendDescription(
-        "#filters-panel #study-level-content .js-fbsearch-filters-modal--label-text[data-filter-name='pathways-and-bridging-programs']",
+        "#filters-panel #study-level-content .js-fbsearch-filters-modal--label-text[data-filter-name='pathways and bridging programs']",
         copy.studyLevelPathways
     );        
 
