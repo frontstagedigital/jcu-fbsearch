@@ -498,10 +498,10 @@ var FeaturedFilters = (function () {
 
       var label = v.label;
       var ld = (facet.labels && facet.labels[label]) || {};
-      // var qsp = ld.queryParam || "";
-      // var toggle = ld.toggleUrl || "";
+      // var qsp = (ld.queryParam || v.queryParam || "");
+      var toggle = (ld.toggleUrl || v.toggleUrl || "");
       // var pair = splitQsp(qsp); // { name, value }
-      var qsp = ld.queryParam || "";
+      var qsp = (ld.queryParam || v.queryParam || "");
       var toggle = ld.toggleUrl || "";
       var pair = { name: "", value: "" };
       if (qsp) pair = splitQsp(qsp);
