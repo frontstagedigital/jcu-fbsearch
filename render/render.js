@@ -560,11 +560,6 @@ var FeaturedFilters = (function () {
       '          <input type="checkbox"' +
       ' name="' + Html.esc(pair.name) + '"' +
       ' value="' + Html.esc(pair.value) + '"' + checkedAttr +
-      ' data-dbg-source="' + Html.esc(source) + '"' +
-      ' data-dbg-toggle="' + Html.esc(toggle) + '"' +
-      ' data-dbg-qsp="' + Html.esc(qsp) + '"' +
-      ' data-dbg-pair-name="' + Html.esc(pair.name) + '"' +
-      ' data-dbg-pair-value="' + Html.esc(pair.value) + '"' +
       '>'
     );
 
