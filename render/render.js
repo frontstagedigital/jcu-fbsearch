@@ -1,3 +1,10 @@
+// debug flag: set window.JCU_FACET_DEBUG = true in console to enable
+function DBG() {
+  if (typeof window !== "undefined" && window.JCU_FACET_DEBUG && typeof console !== "undefined") {
+    try { console.log.apply(console, arguments); } catch(e) {}
+  }
+}
+
 // simple title case for UI labels - preserves acronyms, keeps small words lower-case mid-phrase
 function titleCaseLabel(str) {
   var STOP = {
@@ -439,21 +446,23 @@ var FeaturedFilters = (function () {
     if (!q) return { name: "", value: "" };
 
     var parts = q.split("&");
-    // Walk from the end so we prefer the last f.* param if duplicated
     for (var i = parts.length - 1; i >= 0; i--) {
       var seg = parts[i];
       if (!seg) continue;
       var eq = seg.indexOf("=");
       if (eq < 0) continue;
       var rawName = seg.slice(0, eq);
-      // decode '+' to space and %7C to '|'
       var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
       if (name.indexOf("f.") === 0) {
-        return { name: name, value: seg.slice(eq + 1) }; // keep RHS as-is (encoded)
+        var pair = { name: name, value: seg.slice(eq + 1) };
+        DBG("[splitQspFromToggleUrl] parsed", { url: url, pair: pair });
+        return pair;
       }
     }
+    DBG("[splitQspFromToggleUrl] no f.* param found", { url: url });
     return { name: "", value: "" };
   }
+
 
   // If you already have this:
   function encodeForParam(val) {
@@ -492,73 +501,101 @@ var FeaturedFilters = (function () {
         b.add('<div class="m-100 overflow_y-auto overflow_x-h" style="max-height:500px;">');
     }
 
-    for (var i = 0; i < values.length; i++) {
-      var v = values[i];
-      if (!v || !v.label) continue;
+for (var i = 0; i < values.length; i++) {
+  var v = values[i];
+  if (!v || !v.label) continue;
 
-      var label = v.label;
-      var ld = (facet.labels && facet.labels[label]) || {};
+  var label = v.label;
+  var ld = (facet.labels && facet.labels[label]) || {};
 
-      // Prefer precomputed queryParam, otherwise parse from toggleUrl (labels or value)
-      var qsp    = (ld.queryParam || v.queryParam || "");
-      var toggle = (ld.toggleUrl  || v.toggleUrl  || "");
+  // Prefer queryParam, else fall back to toggleUrl (either from labels or from v)
+  var qsp    = (ld.queryParam || v.queryParam || "");
+  var toggle = (ld.toggleUrl  || v.toggleUrl  || "");
 
-      var pair = { name: "", value: "" };
-      if (qsp) {
-        pair = splitQsp(qsp);
-      }
-      if ((!pair.name || !pair.value) && toggle) {
-        var t = splitQspFromToggleUrl(toggle);
-        if (t.name)  pair.name  = t.name;
-        if (t.value) pair.value = t.value;  // stays encoded, e.g. 'pathways+and+bridging+programs'
-      }
+  var pair = { name: "", value: "" };
+  var source = "fallback";
 
+  if (qsp) {
+    pair = splitQsp(qsp);
+    if (pair.name && pair.value) source = "queryParam";
+  }
+  if ((!pair.name || !pair.value) && toggle) {
+    var t = splitQspFromToggleUrl(toggle);
+    if (t.name)  pair.name  = t.name;
+    if (t.value) pair.value = t.value;   // encoded e.g. 'pathways+and+bridging+programs'
+    if (t.name || t.value) source = "toggleUrl";
+  }
 
-      var checkedAttr = v.selected ? ' checked="checked"' : '';
+  // Fallbacks if still missing
+  var submitName = pair.name || (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+  var submitValToken = pair.value;
+  if (!submitValToken) {
+    var submitVal = (v.data != null && v.data !== "") ? v.data : label;
+    submitValToken = encodeForParam(submitVal);
+    source = source === "fallback" ? "fallback:dataOrLabel" : source + "+fallback";
+  }
 
-      if (isMulti) {
-        // MULTI - checkboxes
-        if(facetSlug === "study-area"){
-          b.add(
-            '      <div tabindex="0"' +
-            ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
-            ' class="p-b-075 p-l-075 p-r-075 select-label-text f-semibold"' +
-            '>'
-          );
-        } else {
-          b.add(
-            '      <div tabindex="0"' +
-            ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
-            ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
-            '>'
-          );
-        }
-        b.add('        <label class="pointer d-block">');
+  var checkedAttr = v.selected ? ' checked="checked"' : '';
 
-        //b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(label) + '"' + checkedAttr + '>');\
-        //b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(pair.value || label) + '"' + checkedAttr + '>');
-        var submitName = pair.name || (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-        var submitValToken = pair.value || encodeForParam((v.data != null && v.data !== "") ? v.data : label);
-        b.add('          <input type="checkbox" name="' + Html.esc(submitName) + '" value="' + Html.esc(submitValToken) + '"' + checkedAttr + '>');
+  // DEBUG: log what we’re actually outputting
+  DBG("[facet row]", {
+    facet: facet.name,
+    label: label,
+    valueObject: v,
+    labelData: ld,
+    qsp: qsp,
+    toggle: toggle,
+    pair: pair,
+    submitName: submitName,
+    submitValToken: submitValToken,
+    source: source
+  });
 
-        b.add('          <span>' + Html.esc(formatFacetLabel(label, facetName)) + '</span>');
-        b.add('        </label>');
-        b.add('      </div>');
-      } else {
-        // SINGLE - clickable rows
-        b.add(
-          '      <div tabindex="0"' +
-          ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
-          ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
-          ' data-param-name="' + Html.esc(pair.name) + '"' +
-          ' data-param-value="' + Html.esc(pair.value) + '"' +
-          ' data-toggleurl="' + Html.esc(toggle) + '"' +
-          '>'
-        );
-        b.add('        ' + Html.esc(formatFacetLabel(label, facetName)));
-        b.add('      </div>');
-      }
+  if (isMulti) {
+    if (facetSlug === "study-area") {
+      b.add(
+        '      <div tabindex="0" data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
+        ' class="p-b-075 p-l-075 p-r-075 select-label-text f-semibold">'
+      );
+    } else {
+      b.add(
+        '      <div tabindex="0" data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
+        ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold">'
+      );
     }
+    b.add('        <label class="pointer d-block">');
+
+    // Add a few data-* hooks so you can inspect in Elements panel
+    b.add(
+      '          <input type="checkbox"' +
+      ' name="' + Html.esc(submitName) + '"' +
+      ' value="' + Html.esc(submitValToken) + '"' + checkedAttr +
+      ' data-debug-source="' + Html.esc(source) + '"' +
+      ' data-debug-qsp="' + Html.esc(qsp) + '"' +
+      ' data-debug-toggle="' + Html.esc(toggle) + '"' +
+      ' data-debug-pair-name="' + Html.esc(pair.name || "") + '"' +
+      ' data-debug-pair-value="' + Html.esc(pair.value || "") + '"' +
+      '>'
+    );
+
+    b.add('          <span>' + Html.esc(formatFacetLabel(label, facetName)) + '</span>');
+    b.add('        </label>');
+    b.add('      </div>');
+  } else {
+    // SINGLE - clickable rows (unchanged, but keep pair values and toggle as data)
+    b.add(
+      '      <div tabindex="0" data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
+      ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
+      ' data-param-name="' + Html.esc(pair.name) + '"' +
+      ' data-param-value="' + Html.esc(pair.value) + '"' +
+      ' data-toggleurl="' + Html.esc(toggle) + '"' +
+      '>'
+    );
+    b.add('        ' + Html.esc(formatFacetLabel(label, facetName)));
+    b.add('      </div>');
+  }
+}
+
 
     if(facetSlug === "study-area" && values.length > 14) {
         b.add('</div>');
