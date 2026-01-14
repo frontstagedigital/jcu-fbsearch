@@ -26,6 +26,22 @@ function titleCaseLabel(str) {
   return parts.join(" ");
 }
 
+// simple first character uppercase
+function capFirstLabel(str) {
+  var s = String(str == null ? "" : str);
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// choose label formatter per facet
+function formatFacetLabel(label, facetName) {
+  var slugged = String(facetName || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return (slugged === "study-area")
+    ? titleCaseLabel(label)   // keep existing title-casing for Study area
+    : capFirstLabel(label);   // all other facets -> just capitalise first letter
+}
+
+
 /* === render/results.js === */
 var Results = (function () {
   // -------- JCU helpers --------
@@ -470,7 +486,7 @@ var FeaturedFilters = (function () {
         b.add('        <label class="pointer d-block">');
         //b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(label) + '"' + checkedAttr + '>');\
         b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(pair.value || label) + '"' + checkedAttr + '>');
-        b.add('          <span>' + Html.esc(titleCaseLabel(label)) + '</span>');
+        b.add('          <span>' + Html.esc(formatFacetLabel(label, facetName)) + '</span>');
         b.add('        </label>');
         b.add('      </div>');
       } else {
@@ -484,7 +500,7 @@ var FeaturedFilters = (function () {
           ' data-toggleurl="' + Html.esc(toggle) + '"' +
           '>'
         );
-        b.add('        ' + Html.esc(titleCaseLabel(label)));
+        b.add('        ' + Html.esc(formatFacetLabel(label, facetName)));
         b.add('      </div>');
       }
     }
@@ -569,7 +585,7 @@ var HeaderRow = (function () {
         if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
         if (!value) value = encodeURIComponent((v.data != null && v.data !== "") ? v.data : label).replace(/%20/g, "+");
 
-        chips.push({ label: label, name: name, value: value });
+        chips.push({ label: label, name: name, value: value, facetName: facet.name });
       }
     }
     if (!chips.length) return "";
@@ -582,7 +598,7 @@ var HeaderRow = (function () {
         '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
         ' data-remove-name="' + Html.esca(c.name) + '"' +
         ' data-remove-value="' + Html.esca(c.value) + '">' +
-        Html.esc(titleCaseLabel(c.label)) +
+        Html.esc(formatFacetLabel(c.label, c.facetName)) +
         '</span>'
       );
     }
@@ -664,7 +680,7 @@ var FiltersModal = (function () {
       b.add('<label class="flex align-start gap-050-column pointer select-label-text">');
       b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
       b.add('<div class="js-fbsearch-filters-modal--label-text" data-filter-name="' + Html.esca(label) + '">');
-      b.add('<div class="f-semibold">' + Html.esc(titleCaseLabel(label)) + '</div>');
+      b.add('<div class="f-semibold">' + Html.esc(formatFacetLabel(label, facet.name)) + '</div>');
       b.add('</div>');
       b.add('</label>');
       b.add('</div>');
