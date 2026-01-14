@@ -642,56 +642,67 @@ var HeaderRow = (function () {
   }
 
   function selected(sd) {
-    var chips = [];
-    for (var i = 0; i < sd.facets.length; i++) {
-      var facet = sd.facets[i];
-      var vals = facet.allValues || [];
-      for (var j = 0; j < vals.length; j++) {
-        var v = vals[j];
-        if (!v || !v.selected) continue;
-        var label = v.label || "";
-        var ld = (facet.labels && facet.labels[label]) || {};
-        var qsp = ld.queryParam || ""; // e.g. "f.Location|campus=Brisbane"
-        var name = "", value = "";
-        if (qsp) {
-          var eq = qsp.indexOf("=");
-          if (eq > -1) {
-            name  = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-            value = qsp.slice(eq + 1); // keep token as-is
-          }
-        }
-        
-        if ((!name || !value) && (ld.toggleUrl || v.toggleUrl)) {
-          var t = splitQspFromToggleUrl(ld.toggleUrl || v.toggleUrl);
-          if (t.name) name = t.name;
-          if (t.value) value = t.value;
-        }
+  var chips = [];
+  for (var i = 0; i < sd.facets.length; i++) {
+    var facet = sd.facets[i];
+    var vals = facet.allValues || [];
+    for (var j = 0; j < vals.length; j++) {
+      var v = vals[j];
+      if (!v || !v.selected) continue;
 
-        // fallback if queryParam missing
-        if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-        if (!value) value = encodeURIComponent((v.data != null && v.data !== "") ? v.data : label).replace(/%20/g, "+");
+      var label = v.label || "";
+      var ld = (facet.labels && facet.labels[label]) || {};
+      var name = "", value = "";
 
-        chips.push({ label: label, name: name, value: value, facetName: facet.name });
+      // 1) Prefer toggleUrl (keeps RHS like pathways+and+bridging+programs)
+      if (ld.toggleUrl || v.toggleUrl) {
+        var t = splitQspFromToggleUrl(ld.toggleUrl || v.toggleUrl);
+        if (t.name)  name  = t.name;
+        if (t.value) value = t.value;
       }
-    }
-    if (!chips.length) return "";
 
-    var b = Html.buffer();
-    b.add('<div id="selected-filters" class="columns flex-nowrap align-center gap-050-column">');
-    for (var k = 0; k < chips.length; k++) {
-      var c = chips[k];
-      b.add(
-        '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
-        ' data-remove-name="' + Html.esca(c.name) + '"' +
-        ' data-remove-value="' + Html.esca(c.value) + '">' +
-        Html.esc(formatFacetLabel(c.label, c.facetName)) +
-        '</span>'
-      );
+      // 2) If still missing, try queryParam
+      if ((!name || !value) && ld.queryParam) {
+        var q = ld.queryParam;
+        var eq = q.indexOf("=");
+        if (eq > -1) {
+          if (!name)  name  = decodeURIComponent(q.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+          if (!value) value = q.slice(eq + 1); // keep encoded token
+        }
+      }
+
+      // 3) Fallbacks if either side is still empty
+      if (!name) {
+        name = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+      }
+      if (!value) {
+        var submitVal = (v.data != null && v.data !== "") ? v.data : label;
+        value = encodeURIComponent(String(submitVal)).replace(/%20/g, "+");
+      }
+
+      chips.push({ label: label, name: name, value: value, facetName: facet.name });
     }
-    b.add('<span class="f-underline pointer">Clear all</span>');
-    b.add('</div>');
-    return b.toString();
   }
+  if (!chips.length) return "";
+
+  var b = Html.buffer();
+  b.add('<div id="selected-filters" class="columns flex-nowrap align-center gap-050-column">');
+  for (var k = 0; k < chips.length; k++) {
+    var c = chips[k];
+    // LHS = param name, RHS = encoded value
+    b.add(
+      '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
+      ' data-remove-name="' + Html.esca(c.name) + '"' +
+      ' data-remove-value="' + Html.esca(c.value) + '">' +
+      Html.esc(formatFacetLabel(c.label, c.facetName)) +
+      '</span>'
+    );
+  }
+  b.add('<span class="f-underline pointer">Clear all</span>');
+  b.add('</div>');
+  return b.toString();
+}
+
 
   return {
     featured: featured,
