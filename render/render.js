@@ -624,7 +624,6 @@ var FeaturedFilters = (function () {
 })();
 
 
-
 /* === render/header-row.js === */
 var HeaderRow = (function () {
   function featured(sd, G) {
@@ -640,6 +639,7 @@ var HeaderRow = (function () {
     return b.toString();
   }
 
+  // REPLACED: prefer toggleUrl tokens for chip attributes
   function selected(sd) {
     var chips = [];
     for (var i = 0; i < sd.facets.length; i++) {
@@ -648,27 +648,33 @@ var HeaderRow = (function () {
       for (var j = 0; j < vals.length; j++) {
         var v = vals[j];
         if (!v || !v.selected) continue;
+
         var label = v.label || "";
-        var ld = (facet.labels && facet.labels[label]) || {};
-        var qsp = ld.queryParam || ""; // e.g. "f.Location|campus=Brisbane"
+        var ld    = (facet.labels && facet.labels[label]) || {};
+
+        // 1) Prefer toggleUrl (keeps RHS encoded exactly, e.g. pathways+and+bridging+programs)
+        // 2) Fall back to queryParam
+        // 3) Final fallback: encode v.data or label
         var name = "", value = "";
-        if (qsp) {
-          var eq = qsp.indexOf("=");
-          if (eq > -1) {
-            name  = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-            value = qsp.slice(eq + 1); // keep token as-is
-          }
-        }
-        
-        if ((!name || !value) && (ld.toggleUrl || v.toggleUrl)) {
-          var t = splitQspFromToggleUrl(ld.toggleUrl || v.toggleUrl);
-          if (t.name) name = t.name;
-          if (t.value) value = t.value;
+
+        var toggle = (ld.toggleUrl || v.toggleUrl || "");
+        if (toggle) {
+          var t = splitQspFromToggleUrl(toggle);
+          if (t.name)  name  = t.name;   // decoded name is fine for LHS
+          if (t.value) value = t.value;  // encoded RHS token we need for removal
         }
 
-        // fallback if queryParam missing
+        if ((!name || !value) && (ld.queryParam || v.queryParam)) {
+          var qsp = (ld.queryParam || v.queryParam);
+          var eq = qsp.indexOf("=");
+          if (eq > -1) {
+            if (!name)  name  = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+            if (!value) value = qsp.slice(eq + 1); // keep RHS as-is
+          }
+        }
+
         if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-        if (!value) value = encodeURIComponent((v.data != null && v.data !== "") ? v.data : label).replace(/%20/g, "+");
+        if (!value) value = encodeURIComponent(((v.data != null && v.data !== "") ? v.data : label)).replace(/%20/g, "+");
 
         chips.push({ label: label, name: name, value: value, facetName: facet.name });
       }
@@ -697,6 +703,7 @@ var HeaderRow = (function () {
     selected: selected
   };
 })();
+
 
 
 /* === render/filters-modal.js === */
