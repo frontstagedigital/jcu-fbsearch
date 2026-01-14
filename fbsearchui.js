@@ -559,6 +559,70 @@ document.addEventListener("DOMContentLoaded", function () {
         if (url) form.setAttribute('action', url);
     }
 
+    
+    var banner = document.getElementById('banner-header--wrapper');
+
+    function normaliseUrl(u) {
+        try {
+            var s = String(u || '');
+            var q = s.indexOf('?');
+            if (q > -1) s = s.slice(0, q);
+            if (s.length > 1 && s.endsWith('/')) s = s.slice(0, -1);
+            return s;
+        } catch (e) { return String(u || ''); }
+    }
+
+    function getCollectionFromAction() {
+        var act = normaliseUrl(form.getAttribute('action') || '');
+        var courses = normaliseUrl(form.dataset.coursesSearch || '');
+        var global  = normaliseUrl(form.dataset.globalSearch || '');
+        if (act && courses && act == courses) return 'courses';
+        if (act && global  && act == global)  return 'global';
+        var b = switcher && switcher.querySelector('.js-search-collection-switcher-button[active]');
+        return b ? (b.getAttribute('collection') || 'courses') : 'courses';
+    }
+
+    function updateBannerCopyByCollection(collection) {
+        if (!banner) return;
+        var h1 = banner.querySelector('h1');
+        var p  = banner.querySelector('p');
+        if (!h1 || !p) return;
+        if (collection === 'courses') {
+            h1.textContent = 'Discover courses';
+            p.textContent  = 'Search undergraduate, postgraduate, research, and short courses across JCU';
+            banner.setAttribute('data-search-type', 'courses');
+        } else {
+            h1.textContent = 'Discover JCU';
+            p.textContent  = 'Search all JCU content - news, services, guides, events and more';
+            banner.setAttribute('data-search-type', 'global');
+        }
+    }
+
+    function syncBannerToFormAction() {
+        updateBannerCopyByCollection(getCollectionFromAction());
+    }
+
+    if (window.MutationObserver) {
+        var mo = new MutationObserver(function(muts) {
+            for (var i = 0; i < muts.length; i++) {
+                if (muts[i].type === 'attributes' && muts[i].attributeName === 'action') {
+                    syncBannerToFormAction();
+                    break;
+                }
+            }
+        });
+        mo.observe(form, { attributes: true, attributeFilter: ['action'] });
+    }
+
+    (function wrapUpdateFormAction(){
+        var _orig = updateFormAction;
+        updateFormAction = function(){
+            if (_orig) _orig();
+            syncBannerToFormAction();
+        };
+    })();
+
+    syncBannerToFormAction();
     // Banner copy updater
     var banner = document.getElementById('banner-header--wrapper');
 
