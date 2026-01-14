@@ -33,12 +33,20 @@ function capFirstLabel(str) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// choose label formatter per facet
+function slugFacetName(n) {
+  return String(n || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+// Use title case for Study area and Location; cap-first for others
 function formatFacetLabel(label, facetName) {
-  var slugged = String(facetName || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  return (slugged === "study-area")
-    ? titleCaseLabel(label)   // keep existing title-casing for Study area
-    : capFirstLabel(label);   // all other facets -> just capitalise first letter
+  var slug = slugFacetName(facetName);
+  if (slug === "study-area" || slug === "location") {
+    return titleCaseLabel(label);
+  }
+  return capFirstLabel(label);
 }
 
 
