@@ -1,4 +1,4 @@
-/* FBSearchUI v2.3 */
+/* FBSearchUI v2.4 (unified featured facets = modal behaviour) */
 (function () {
     var CFG = window.FBSearchUI || {};
     var DEBUG = !!window.FBSearchUI_DEBUG || !!CFG.debug;
@@ -231,41 +231,93 @@
         else form.submit();
     }
 
-    function attach(form) {
-        log("init OK - featured multiselect + chip removal + apply");
+    /* ===== Unified facet rebuild helpers (identical to modal behaviour) ===== */
 
-        // Featured/Simple clicks - submit with preserved params
+    // Collect all checked facet checkboxes from the UI (featured + modal)
+    function collectFacetPairsFromUI() {
+        var pairs = [];
+        var seen = Object.create(null);
+
+        var nodeList = document.querySelectorAll(
+            '.multiselect input[type="checkbox"]:checked, ' + modalRootSelector + ' input[type="checkbox"]:checked'
+        );
+
+        for (var i = 0; i < nodeList.length; i++) {
+            var cb = nodeList[i];
+            var nm = cb && cb.name ? String(cb.name) : "";
+            if (!nm || nm.indexOf(clearHiddenNamePrefix) !== 0) continue; // only f.* params
+            var val = normalisePlusToSpace(cb.value || "");
+            var key = nm + "|" + val;
+            if (seen[key]) continue;
+            seen[key] = true;
+            pairs.push({ name: nm, value: val });
+        }
+        return pairs;
+    }
+
+    // Seed non-facet params from URL, wipe all f.*, then mirror UI facet state and any extra forced pairs
+    function rebuildFacetsFromUI(form, extraPairs /* optional array of {name,value} */) {
+        // 1) Seed everything from URL
+        seedFromUrlSmart(form, window.location.search);
+
+        // 2) Remove every f.* we just seeded (and any existing mirrors)
+        clearHiddenByPrefix(form, clearHiddenNamePrefix);
+
+        // 3) Rebuild from UI (featured + modal)
+        var uiPairs = collectFacetPairsFromUI();
+        for (var i = 0; i < uiPairs.length; i++) {
+            appendHidden(form, uiPairs[i].name, uiPairs[i].value);
+        }
+
+        // 4) If we have a single-click selection (non-checkbox), force-apply it too
+        if (extraPairs && extraPairs.length) {
+            var seen = Object.create(null);
+            for (var j = 0; j < uiPairs.length; j++) {
+                seen[uiPairs[j].name + "|" + uiPairs[j].value] = true;
+            }
+            for (var k = 0; k < extraPairs.length; k++) {
+                var ep = extraPairs[k] || {};
+                var en = String(ep.name || "");
+                if (!en) continue;
+                var ev = normalisePlusToSpace(ep.value || "");
+                var key = en + "|" + ev;
+                if (seen[key]) continue;
+                seen[key] = true;
+                appendHidden(form, en, ev);
+            }
+        }
+    }
+
+    function attach(form) {
+        log("init OK - featured == modal via unified rebuild");
+
+        // 1) Featured/Simple clicks (single option rows)
         document.addEventListener("click", function (e) {
             var option = e.target && e.target.closest('.select-wrapper .select-label-text[data-param-name][data-param-value]');
             if (!option) return;
+
             e.stopPropagation();
+            e.preventDefault();
 
             var toggleUrl = option.getAttribute("data-toggleurl");
-            var name = option.getAttribute("data-param-name");
-            var rawValue = option.getAttribute("data-param-value");
-            var value = normalisePlusToSpace(rawValue);
+            var name      = option.getAttribute("data-param-name") || "";
+            var rawValue  = option.getAttribute("data-param-value") || "";
+            var value     = normalisePlusToSpace(rawValue);
 
             if (preferToggleUrl && toggleUrl) {
-                e.preventDefault();
                 window.location.href = toggleUrl;
                 return;
             }
 
-            // Pre-fill with current URL params
-            applyQueryToForm(form, window.location.search, name ? [name] : []);
-            if (mirrorToggleUrlParams && toggleUrl) applyQueryToForm(form, toggleUrl, name ? [name] : []);
-
-            if (name) setHidden(form, name, value);
-
-            // reset pagination when sort/view changes
-            // if (name === "sort" || name === "ui_view") setHidden(form, "start_rank", "");
+            // Rebuild like the modal, but force-include this pair too (covers non-checkbox facets)
+            var extras = (name ? [{ name: name, value: value }] : []);
+            rebuildFacetsFromUI(form, extras);
 
             updateControlLabel(option);
-            e.preventDefault();
             safeSubmit(form);
         }, true);
 
-        // Featured multiselect - Apply button: rebuild f.* from UI, dedup, don't seed f.* from URL
+        // 2) Featured multiselect - Apply (identical to modal behaviour)
         document.addEventListener("click", function (e) {
             var btn = e.target && e.target.closest('.multiselect button#filters-apply, .multiselect [data-featured-apply]');
             if (!btn) return;
@@ -273,39 +325,22 @@
             e.stopPropagation();
             e.preventDefault();
 
-            var form = document.querySelector(formSelector);
-            if (!form) return;
-
-            // 1) Seed NON-facet params from the current URL
-            //    (seed everything, then immediately wipe any f.* that might have been added)
-            seedFromUrlSmart(form, window.location.search);
-            clearHiddenByPrefix(form, clearHiddenNamePrefix); // remove any seeded f.*
-
-            // 2) Collect ALL checked facet checkboxes from featured + modal
-            var nodeList = document.querySelectorAll(
-                '.multiselect input[type="checkbox"]:checked, ' + modalRootSelector + ' input[type="checkbox"]:checked'
-            );
-
-            // 3) De-duplicate by name|value
-            var seen = Object.create(null);
-            for (var i = 0; i < nodeList.length; i++) {
-                var cb = nodeList[i];
-                var name = cb && cb.name ? String(cb.name) : "";
-                if (!name || name.indexOf(clearHiddenNamePrefix) !== 0) continue; // only f.* params
-
-                var value = normalisePlusToSpace(cb.value || "");
-                var key = name + "|" + value;
-
-                if (seen[key]) continue;
-                seen[key] = true;
-                appendHidden(form, name, value);
-            }
-
-            // 4) Submit
+            rebuildFacetsFromUI(form);
             safeSubmit(form);
         }, true);
 
+        // 3) All Filters modal - Apply (call the same unified path)
+        document.addEventListener("click", function (e) {
+            var applyBtn = e.target && e.target.closest(modalApplySelector);
+            // ignore clicks bubbling from featured panels
+            if (!applyBtn || applyBtn.closest('.multiselect')) return;
 
+            e.stopPropagation();
+            e.preventDefault();
+
+            rebuildFacetsFromUI(form);
+            safeSubmit(form);
+        }, true);
 
         // Featured multiselect - Cancel button closes the dropdown and resets styles
         document.addEventListener("click", function (e) {
@@ -329,40 +364,6 @@
             if (head) head.classList.remove('active');
         }, true);
 
-        // All Filters - Apply (modal)
-        document.addEventListener("click", function (e) {
-            var applyBtn = e.target && e.target.closest(modalApplySelector);
-            // If the click was handled by the featured multiselect handler above, bail out
-            if (!applyBtn || applyBtn.closest('.multiselect')) return;
-
-            e.stopPropagation();
-            e.preventDefault();
-
-            // Start from current URL
-            //applyQueryToForm(form, window.location.search);
-            seedFromUrlSmart(form, window.location.search);
-
-            // Mirror modal selections
-            if (mirrorFiltersFromModal) {
-                var modal = document.querySelector(modalRootSelector);
-                if (modal) {
-                    clearHiddenByPrefix(form, clearHiddenNamePrefix);
-                    var checks = modal.querySelectorAll('input[type="checkbox"]:checked');
-                    for (var i = 0; i < checks.length; i++) {
-                        var c = checks[i];
-                        if (!c.name) continue;
-                        var h = document.createElement("input");
-                        h.type = "hidden";
-                        h.name = c.name;
-                        h.value = normalisePlusToSpace(c.value || "");
-                        form.appendChild(h);
-                    }
-                }
-            }
-
-            safeSubmit(form);
-        }, true);
-
         // Selected filter removal (single chip)
         document.addEventListener("click", function (e) {
             var chip = e.target && e.target.closest(selectedFilterSelector);
@@ -371,7 +372,7 @@
             e.preventDefault();
 
             var remName = chip.getAttribute("data-remove-name") || chip.getAttribute("data-param-name");
-            var remVal = chip.getAttribute("data-remove-value") || chip.getAttribute("data-param-value");
+            var remVal  = chip.getAttribute("data-remove-value") || chip.getAttribute("data-param-value");
             var toggleUrl = chip.getAttribute("data-toggleurl");
 
             if (preferToggleUrl && toggleUrl) {
@@ -379,9 +380,10 @@
                 return;
             }
 
-            //applyQueryToForm(form, window.location.search);
+            // Start from URL
             seedFromUrlSmart(form, window.location.search);
 
+            // Remove one param pair or all with that name
             if (remName) {
                 if (remVal != null && remVal !== "") {
                     removeParamPair(form, remName, normalisePlusToSpace(remVal));
@@ -445,8 +447,7 @@
             attach(form);
             return;
         }
-        var tries = 0,
-            maxTries = 20;
+        var tries = 0, maxTries = 20;
         var t = setInterval(function () {
             form = document.querySelector(formSelector);
             if (form) {
@@ -652,25 +653,25 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function getActiveCollection() {
-    var btn = getActiveButton();
+        var btn = getActiveButton();
         return btn ? (btn.getAttribute('collection') || 'courses') : 'courses';
     }
 
     function updateBannerCopy(collection) {
-    if (!banner) return;
-    var h1 = banner.querySelector('h1');
-    var p  = banner.querySelector('p');
-    if (!h1 || !p) return;
+        if (!banner) return;
+        var h1 = banner.querySelector('h1');
+        var p  = banner.querySelector('p');
+        if (!h1 || !p) return;
 
-    if (collection === 'courses') {
-        h1.textContent = 'Discover courses';
-        p.textContent  = 'Search undergraduate, postgraduate, research, and short courses across JCU';
-        banner.setAttribute('data-search-type', 'courses');
-    } else {
-        h1.textContent = 'Discover JCU';
-        p.textContent  = 'Search all JCU content - news, services, guides, events and more';
-        banner.setAttribute('data-search-type', 'global');
-    }
+        if (collection === 'courses') {
+            h1.textContent = 'Discover courses';
+            p.textContent  = 'Search undergraduate, postgraduate, research, and short courses across JCU';
+            banner.setAttribute('data-search-type', 'courses');
+        } else {
+            h1.textContent = 'Discover JCU';
+            p.textContent  = 'Search all JCU content - news, services, guides, events and more';
+            banner.setAttribute('data-search-type', 'global');
+        }
     }
 
     function syncUiToCollection() {
@@ -680,24 +681,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // click handler: after setting the new active state, call sync
     switcher.addEventListener('click', function (e) {
-    var btn = e.target.closest('.js-search-collection-switcher-button');
-    if (!btn || !switcher.contains(btn)) return;
+        var btn = e.target.closest('.js-search-collection-switcher-button');
+        if (!btn || !switcher.contains(btn)) return;
 
-    // no-op if already active
-    if (btn.hasAttribute('active')) return;
+        // no-op if already active
+        if (btn.hasAttribute('active')) return;
 
-    // clear existing active state
-    buttons.forEach(function (b) { b.removeAttribute('active'); });
-    // set active on clicked
-    btn.setAttribute('active', '');
+        // clear existing active state
+        buttons.forEach(function (b) { b.removeAttribute('active'); });
+        // set active on clicked
+        btn.setAttribute('active', '');
 
-    // update form + banner together
-    syncUiToCollection();
+        // update form + banner together
+        syncUiToCollection();
     });
 
     // initial sync to match whatever is marked active in the DOM
     syncUiToCollection();
-
 
     switcher.addEventListener('click', function (e) {
         var btn = e.target.closest('.js-search-collection-switcher-button');
