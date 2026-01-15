@@ -35,23 +35,13 @@ function encodeForParam(val) {
   return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
 }
 
+// value token rule: use label for all facets except "Student type" which uses data when present
 function valueTokenForFacet(facetName, data, label) {
   var name = String(facetName || "");
   if (name.toLowerCase() === "student type") {
     return encodeForParam(data != null && data !== "" ? data : label);
   }
   return encodeForParam(label);
-}
-
-// --- shared helpers for param parsing ---
-function splitQsp(qsp) {
-  if (!qsp || typeof qsp !== "string") return { name: "", value: "" };
-  var i = qsp.indexOf("=");
-  if (i < 0) return { name: "", value: "" };
-  var rawName = qsp.slice(0, i);
-  var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
-  var value = qsp.slice(i + 1); // keep RHS encoded as-is
-  return { name: name, value: value };
 }
 
 /* === render/results.js === */
@@ -421,6 +411,16 @@ var FeaturedFilters = (function () {
       .replace(/(^-|-$)/g, "");
   }
 
+  function splitQsp(qsp) {
+    if (!qsp || typeof qsp !== "string") return { name: "", value: "" };
+    var i = qsp.indexOf("=");
+    if (i < 0) return { name: "", value: "" };
+    var rawName = qsp.slice(0, i);
+    var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/g, "|"));
+    var value = qsp.slice(i + 1);
+    return { name: name, value: value };
+  }
+
   // UPDATED: adds checked="checked" when v.selected is true
   function block(facet) {
     var facetName = facet.name;
@@ -448,8 +448,8 @@ var FeaturedFilters = (function () {
 
     var values = facet.allValues || [];
 
-    if (facetSlug === "study-area" && values.length > 14) {
-      b.add('<div class="m-100 overflow_y-auto overflow_x-h" style="max-height:500px;">');
+    if(facetSlug === "study-area" && values.length > 14) {
+        b.add('<div class="m-100 overflow_y-auto overflow_x-h" style="max-height:500px;">');
     }
 
     for (var i = 0; i < values.length; i++) {
@@ -458,26 +458,15 @@ var FeaturedFilters = (function () {
 
       var label = v.label;
       var ld = (facet.labels && facet.labels[label]) || {};
-      var qsp = ld.queryParam || "";         // authoritative name/value
-      var pName = "", pValEncoded = "";
-
-      if (qsp) {
-        var eq = qsp.indexOf("=");
-        if (eq > -1) {
-          pName = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-          pValEncoded = qsp.slice(eq + 1);   // keep RHS encoded exactly
-        }
-      }
-
-      // Fallbacks if labels[...].queryParam missing
-      if (!pName)  pName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-      if (!pValEncoded) pValEncoded = valueTokenForFacet(facetName, v.data, label);
-
+      var qsp = ld.queryParam || "";
+      var toggle = ld.toggleUrl || "";
+      var pair = splitQsp(qsp); // { name, value } (value ignored by build)
+      var __valTok = valueTokenForFacet(facetName, v.data, label);
       var checkedAttr = v.selected ? ' checked="checked"' : '';
 
       if (isMulti) {
         // MULTI - checkboxes
-        if (facetSlug === "study-area") {
+        if(facetSlug === "study-area"){
           b.add(
             '      <div tabindex="0"' +
             ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
@@ -493,7 +482,7 @@ var FeaturedFilters = (function () {
           );
         }
         b.add('        <label class="pointer d-block">');
-        b.add('          <input type="checkbox" name="' + Html.esc(pName) + '" value="' + Html.esc(pValEncoded) + '"' + checkedAttr + '>');
+        b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(__valTok) + '"' + checkedAttr + '>');
         b.add('          <span>' + Html.esc(titleCaseLabel(label)) + '</span>');
         b.add('        </label>');
         b.add('      </div>');
@@ -503,8 +492,9 @@ var FeaturedFilters = (function () {
           '      <div tabindex="0"' +
           ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
           ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
-          ' data-param-name="' + Html.esc(pName) + '"' +
-          ' data-param-value="' + Html.esc(pValEncoded) + '"' +
+          ' data-param-name="' + Html.esc(pair.name) + '"' +
+          ' data-param-value="' + Html.esc(__valTok) + '"' +
+          ' data-toggleurl="' + Html.esc(toggle) + '"' +
           '>'
         );
         b.add('        ' + Html.esc(titleCaseLabel(label)));
@@ -512,9 +502,10 @@ var FeaturedFilters = (function () {
       }
     }
 
-    if (facetSlug === "study-area" && values.length > 14) {
-      b.add('</div>');
+    if(facetSlug === "study-area" && values.length > 14) {
+        b.add('</div>');
     }
+
 
     if (isMulti) {
       b.add('      <section class="search-filter-buttons flex-shrink-0 col-12">');
@@ -578,7 +569,7 @@ var HeaderRow = (function () {
         if (!v || !v.selected) continue;
         var label = v.label || "";
         var ld = (facet.labels && facet.labels[label]) || {};
-        var qsp = ld.queryParam || ""; // e.g. "f.Study+level%7Cpathways=pathways+and+bridging+programs"
+        var qsp = ld.queryParam || ""; // e.g. "f.Location|campus=Brisbane"
         var name = "", value = "";
         if (qsp) {
           var eq = qsp.indexOf("=");
@@ -587,9 +578,9 @@ var HeaderRow = (function () {
             value = qsp.slice(eq + 1); // keep token as-is
           }
         }
-        // fallback if queryParam missing
+        // fallback if queryParam missing: value must follow the global rule
         if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-        if (!value) value = encodeURIComponent((v.data != null && v.data !== "") ? v.data : label).replace(/%20/g, "+");
+        if (!value) value = valueTokenForFacet(facet.name, v.data, label);
 
         chips.push({ label: label, name: name, value: value });
       }
@@ -666,9 +657,8 @@ var FiltersModal = (function () {
         pName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
       }
       if (!pValEncoded) {
-        // Submit the machine value when present, otherwise the label
-        var submitVal = (v.data != null && v.data !== "") ? v.data : label;
-        pValEncoded = encodeForParam(submitVal);
+        // IMPORTANT: follow the same global rule as everywhere else
+        pValEncoded = valueTokenForFacet(facet.name, v.data, label);
       }
 
       var checked = v.selected ? ' checked="checked"' : "";
