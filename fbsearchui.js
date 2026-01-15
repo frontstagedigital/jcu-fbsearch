@@ -224,26 +224,34 @@
       safeSubmit(form);
     }, true);
 
-    // Selected filter removal (chip)
+    // Selected filter removal (chip) - seed from URL, remove exactly one pair
     document.addEventListener("click", function (e) {
-      var chip = e.target && e.target.closest(selectedFilterSelector);
-      if (!chip) return;
-      e.stopPropagation();
-      e.preventDefault();
+        var chip = e.target && e.target.closest(selectedFilterSelector);
+        if (!chip) return;
+        e.stopPropagation();
+        e.preventDefault();
 
-      var remName = chip.getAttribute("data-remove-name") || chip.getAttribute("data-param-name");
-      var remVal = chip.getAttribute("data-remove-value") || chip.getAttribute("data-param-value");
-      var toggleUrl = chip.getAttribute("data-toggleurl");
+        var remName = chip.getAttribute("data-remove-name") || chip.getAttribute("data-param-name");
+        var remVal  = chip.getAttribute("data-remove-value") || chip.getAttribute("data-param-value");
+        var toggleUrl = chip.getAttribute("data-toggleurl");
 
-      if (preferToggleUrl && toggleUrl) { window.location.href = toggleUrl; return; }
+        if (preferToggleUrl && toggleUrl) {
+            window.location.href = toggleUrl;
+            return;
+        }
 
-      // rebuild from UI, then remove the exact pair
-      buildAndMirrorFacetState(form, null);
-      if (remName) {
-        removeParamPair(form, remName, normalisePlusToSpace(remVal || ""));
-      }
-      safeSubmit(form);
+        // 1) seed the form from the current URL, including all f.* pairs
+        seedFromUrlSmart(form, window.location.search);
+
+        // 2) remove exactly the pair the chip represents
+        if (remName) {
+            removeParamPair(form, remName, normalisePlusToSpace(remVal || ""));
+        }
+
+        // 3) submit
+        safeSubmit(form);
     }, true);
+
 
     // Clear all
     document.addEventListener("click", function (e) {
