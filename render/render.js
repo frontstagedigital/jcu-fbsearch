@@ -33,22 +33,59 @@ function capFirstLabel(str) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function slugFacetName(n) {
-  return String(n || "")
+function slug(s) {
+  return String(s || "")
     .toLowerCase()
+    .replace(/&amp;/g, "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
 
+function splitQsp(qsp) {
+  if (!qsp || typeof qsp !== "string") return { name: "", value: "" };
+  var i = qsp.indexOf("=");
+  if (i < 0) return { name: "", value: "" };
+  var rawName = qsp.slice(0, i);
+  var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/g, "|"));
+  var value = qsp.slice(i + 1);
+  return { name: name, value: value };
+}
+
 // Use title case for Study area and Location; cap-first for others
 function formatFacetLabel(label, facetName) {
-  var slug = slugFacetName(facetName);
+  var slug = slug(facetName);
   if (slug === "study-area" || slug === "location") {
     return titleCaseLabel(label);
   }
   return capFirstLabel(label);
 }
 
+function encodeForParam(val) {
+  return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
+}
+
+function splitQspFromToggleUrl(url) {
+  if (!url || typeof url !== "string") return { name: "", value: "" };
+  var qIndex = url.indexOf("?");
+  var q = qIndex >= 0 ? url.slice(qIndex + 1) : url;
+  if (!q) return { name: "", value: "" };
+
+  var parts = q.split("&");
+  // Walk from the end so we prefer the last f.* param if duplicated
+  for (var i = parts.length - 1; i >= 0; i--) {
+    var seg = parts[i];
+    if (!seg) continue;
+    var eq = seg.indexOf("=");
+    if (eq < 0) continue;
+    var rawName = seg.slice(0, eq);
+    // decode '+' to space and %7C to '|'
+    var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
+    if (name.indexOf("f.") === 0) {
+      return { name: name, value: seg.slice(eq + 1) }; // keep RHS encoded verbatim
+    }
+  }
+  return { name: "", value: "" };
+}
 
 /* === render/results.js === */
 var Results = (function () {
@@ -414,55 +451,8 @@ var Results = (function () {
 
 /* === render/featured-filters.js === */
 var FeaturedFilters = (function () {
-  function slug(s) {
-    return String(s || "")
-      .toLowerCase()
-      .replace(/&amp;/g, "and")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-  }
 
-  function splitQsp(qsp) {
-    if (!qsp || typeof qsp !== "string") return { name: "", value: "" };
-    var i = qsp.indexOf("=");
-    if (i < 0) return { name: "", value: "" };
-    var rawName = qsp.slice(0, i);
-    var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/g, "|"));
-    var value = qsp.slice(i + 1);
-    return { name: name, value: value };
-  }
-
-  function splitQspFromToggleUrl(url) {
-    if (!url || typeof url !== "string") return { name: "", value: "" };
-    var qIndex = url.indexOf("?");
-    var q = qIndex >= 0 ? url.slice(qIndex + 1) : url;
-    if (!q) return { name: "", value: "" };
-
-    var parts = q.split("&");
-    // Walk from the end so we prefer the last f.* param if duplicated
-    for (var i = parts.length - 1; i >= 0; i--) {
-      var seg = parts[i];
-      if (!seg) continue;
-      var eq = seg.indexOf("=");
-      if (eq < 0) continue;
-      var rawName = seg.slice(0, eq);
-      // decode '+' to space and %7C to '|'
-      var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
-      if (name.indexOf("f.") === 0) {
-        return { name: name, value: seg.slice(eq + 1) }; // keep RHS encoded verbatim
-      }
-    }
-    return { name: "", value: "" };
-  }
-
-
-  // If you already have this:
-  function encodeForParam(val) {
-    return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
-  }
-
-
-  // UPDATED: adds checked="checked" when v.selected is true
+  // adds checked="checked" when v.selected is true
   function block(facet) {
     var facetName = facet.name;
     var facetSlug = slug(facetName);
@@ -704,11 +694,6 @@ var HeaderRow = (function () {
 var FiltersModal = (function () {
   function idFromName(n) {
     return String(n).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  }
-
-  // local helper to match the encoding used in URLs: spaces -> '+'
-  function encodeForParam(val) {
-    return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
   }
 
   function section(facet) {
