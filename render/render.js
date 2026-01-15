@@ -667,120 +667,34 @@ var FeaturedFilters = (function () {
 })();
 
 
-/* === render/header-row.js (SSJS debug) === */
+/* === render/header-row.js (strict pairing) === */
 var HeaderRow = (function () {
 
-  // Minimal helpers (guard against missing ones)
-  function encodeForParam(val) {
-    return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
-  }
+  // Strict per-value resolver:
+  // - Always use labels[label].queryParam (or v.queryParam) for the RHS token (canonical, correct case)
+  // - Use toggleUrl only to confirm/override the LHS name by matching the exact RHS token
+  function findFacetPairStrict(facetName, label, data, toggleUrl, queryParam) {
+    var out = { name: "", value: "", source: "none" };
+    var q = parseQsp(queryParam);
+    if (!q.value) return out; // without a canonical RHS we can't be accurate
 
-  // parse "name=value" where RHS must remain encoded
-  function parseQsp(qsp) {
-    if (!qsp || typeof qsp !== "string") return { name: "", value: "" };
-    var i = qsp.indexOf("=");
-    if (i < 0) return { name: "", value: "" };
-    var rawName = qsp.slice(0, i);
-    var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
-    var value = qsp.slice(i + 1); // keep encoded
-    return { name: name, value: value };
-  }
+    var name = q.name;     // may be empty/inexact
+    var value = q.value;   // authoritative encoded token for THIS label
+    var source = "queryParam:rhsCanonical";
 
-  // parse all f.* pairs from a URL or querystring, preserving RHS encoding
-  function parseAllFParams(urlOrQs) {
-    var out = [];
-    if (!urlOrQs) return out;
-    var q = String(urlOrQs);
-    var qi = q.indexOf("?");
-    if (qi >= 0) q = q.slice(qi + 1);
-    if (!q) return out;
-    var parts = q.split("&");
-    for (var i = 0; i < parts.length; i++) {
-      var seg = parts[i];
-      if (!seg) continue;
-      var eq = seg.indexOf("=");
-      if (eq < 0) continue;
-      var rawName = seg.slice(0, eq);
-      var rhs = seg.slice(eq + 1); // keep encoded
-      var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
-      if (name.indexOf("f.") === 0) out.push({ name: name, value: rhs, raw: seg });
+    if (toggleUrl) {
+      var all = parseAllFParams(toggleUrl);
+      // find the last pair whose RHS equals the canonical token
+      for (var i = all.length - 1; i >= 0; i--) {
+        if (all[i].value === value) { name = all[i].name; source = "toggleUrl:rhsMatch"; break; }
+      }
+      // if not found, leave name from queryParam
     }
+
+    out.name = name || ("f." + String(facetName || ""));
+    out.value = value;
+    out.source = source;
     return out;
-  }
-
-  // prefer toggleUrl; accept queryParam only if its RHS already matches label/data token
-  function findFacetPairWithDebug(facetName, label, data, toggleUrl, queryParam) {
-    var labelToken = encodeForParam(label);
-    var dataToken  = (data != null && data !== "") ? encodeForParam(data) : "";
-    var wantTokens = [];
-    if (dataToken) wantTokens.push(dataToken);
-    wantTokens.push(labelToken); // label token used when data is absent
-
-    var diag = {
-      facetName: facetName || "",
-      label: label || "",
-      data: (data == null ? "" : String(data)),
-      labelToken: labelToken,
-      dataToken: dataToken,
-      wantTokens: wantTokens.slice(),
-      toggleUrl: toggleUrl || "",
-      queryParam: queryParam || "",
-      togglePairs: [],
-      queryPair: null,
-      chosen: null,
-      reason: ""
-    };
-
-    var qn = "", qv = "", qOk = false;
-    if (queryParam) {
-      var q = parseQsp(queryParam);
-      qn = q.name; qv = q.value;
-      if (q.name) diag.queryPair = { name: q.name, value: q.value };
-      if (qv && (qv === labelToken || (dataToken && qv === dataToken))) qOk = true;
-    }
-
-    // scan toggleUrl for best match
-    var best = null;
-    var all = toggleUrl ? parseAllFParams(toggleUrl) : [];
-    diag.togglePairs = all;
-
-    if (all && all.length) {
-      // 1) exact LHS + exact RHS token match (prefer data, then label), take the last occurrence
-      for (var t = 0; t < wantTokens.length && !best; t++) {
-        var tok = wantTokens[t];
-        for (var i = all.length - 1; i >= 0; i--) {
-          if ((qn && all[i].name === qn) && all[i].value === tok) { best = { name: all[i].name, value: all[i].value, source: "toggleUrl:lhs+rhs" }; break; }
-        }
-      }
-      // 2) any pair with exact RHS token match (prefer data, then label), take the last occurrence
-      for (var t2 = 0; t2 < wantTokens.length && !best; t2++) {
-        var tok2 = wantTokens[t2];
-        for (var j = all.length - 1; j >= 0; j--) {
-          if (all[j].value === tok2) { best = { name: all[j].name, value: all[j].value, source: "toggleUrl:rhsExact" }; break; }
-        }
-      }
-      // 3) single LHS candidate for this facet group, if unambiguous
-      if (!best) {
-        var facetBase = "f." + String(facetName || "");
-        var candidates = [];
-        for (var k = 0; k < all.length; k++) {
-          var base = all[k].name.split("|")[0]; // e.g. "f.Study level"
-          if (base === facetBase) candidates.push(all[k]);
-        }
-        if (candidates.length === 1) {
-          best = { name: candidates[0].name, value: candidates[0].value, source: "toggleUrl:lhsOnly" };
-        }
-      }
-    }
-
-    if (best) { diag.chosen = best; diag.reason = best.source; return diag; }
-
-    if (qOk) { diag.chosen = { name: qn, value: qv, source: "queryParam:rhsExact" }; diag.reason = "queryParam:rhsExact"; return diag; }
-
-    if (qn && qv) { diag.chosen = { name: qn, value: qv, source: "queryParam:fallback" }; diag.reason = "queryParam:fallback"; return diag; }
-
-    diag.reason = "none";
-    return diag;
   }
 
   function featured(sd, G) {
@@ -796,10 +710,8 @@ var HeaderRow = (function () {
     return b.toString();
   }
 
-  function selected(sd, G) {
+  function selected(sd) {
     var chips = [];
-    var debugItems = [];
-    var showPanel = !!(G && G.debugSelectedFilters);
 
     for (var i = 0; i < sd.facets.length; i++) {
       var facet = sd.facets[i];
@@ -810,41 +722,32 @@ var HeaderRow = (function () {
 
         var label = v.label || "";
         var ld = (facet.labels && facet.labels[label]) || {};
-        var queryParam = ld && ld.queryParam ? String(ld.queryParam) : "";
+        var queryParam = ld && ld.queryParam ? String(ld.queryParam) : (v.queryParam || "");
         var toggleUrl  = (ld && ld.toggleUrl) || v.toggleUrl || "";
 
-        var diag = findFacetPairWithDebug(facet.name, label, v.data, toggleUrl, queryParam);
-        debugItems.push(diag);
-
-        var chosen = diag.chosen || { name: "", value: "" };
-        if (!chosen.name || !chosen.value) {
-          // emit a hidden debug node for skipped chips so it is visible in SSJS DOM
-          // This helps diagnose cases like "pathways and bridging programs" not showing.
-          continue;
-        }
+        var pair = findFacetPairStrict(facet.name, label, v.data, toggleUrl, queryParam);
+        if (!pair.name || !pair.value) continue;
 
         chips.push({
           label: label,
-          name: chosen.name,
-          value: chosen.value,
+          name: pair.name,
+          value: pair.value,
           facetName: facet.name,
           dbg: {
-            source: chosen.source || diag.reason,
+            source: pair.source,
             toggleUrl: toggleUrl,
             queryParam: queryParam,
-            chosenName: chosen.name,
-            chosenValue: chosen.value
+            chosenName: pair.name,
+            chosenValue: pair.value
           }
         });
       }
     }
 
-    if (!chips.length && !showPanel) return "";
+    if (!chips.length) return "";
 
     var b = Html.buffer();
     b.add('<div id="selected-filters" class="columns flex-nowrap align-center gap-050-column">');
-
-    // chips
     for (var k = 0; k < chips.length; k++) {
       var c = chips[k];
       b.add(
@@ -856,27 +759,14 @@ var HeaderRow = (function () {
         ' data-dbg-qsp="' + Html.esca(c.dbg.queryParam) + '"' +
         ' data-dbg-final-name="' + Html.esca(c.dbg.chosenName) + '"' +
         ' data-dbg-final-value="' + Html.esca(c.dbg.chosenValue) + '"' +
-        '>' + Html.esc(formatFacetLabel(c.label, c.facetName)) + '</span>'
+        '>' +
+        Html.esc(formatFacetLabel(c.label, c.facetName)) +
+        '</span>'
       );
     }
     b.add('<span class="f-underline pointer">Clear all</span>');
     b.add('</div>');
-
-    // optional SSJS-visible debug panel (collapsible)
-    if (showPanel) {
-      b.add('<details id="selected-filters-debug" class="m-t-100"><summary>Selected filters debug</summary><pre class="p-100 bg-neutral-1 border">');
-      for (var d = 0; d < debugItems.length; d++) {
-        try {
-          b.add(Html.esc(JSON.stringify(debugItems[d], null, 2)));
-        } catch (e) {
-          // minimal fallback
-          b.add(Html.esc(String(debugItems[d].facetName || "") + " :: " + String(debugItems[d].label || "")));
-        }
-        b.add("\n");
-      }
-      b.add('</pre></details>');
-    }
-
+   
     return b.toString();
   }
 
