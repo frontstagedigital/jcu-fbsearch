@@ -87,6 +87,62 @@ function splitQspFromToggleUrl(url) {
   return { name: "", value: "" };
 }
 
+/* ===== Shared strict helpers (prefer toggleUrl, then queryParam; no fallbacks) ===== */
+function parseAllFParams(urlOrQs) {
+  var out = [];
+  if (!urlOrQs) return out;
+  var q = String(urlOrQs);
+  var qi = q.indexOf("?");
+  if (qi >= 0) q = q.slice(qi + 1);
+  if (!q) return out;
+  var parts = q.split("&");
+  for (var i = 0; i < parts.length; i++) {
+    var seg = parts[i];
+    if (!seg) continue;
+    var eq = seg.indexOf("=");
+    if (eq < 0) continue;
+    var rawName = seg.slice(0, eq);
+    var rhs = seg.slice(eq + 1); // keep encoded
+    var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
+    if (name.indexOf("f.") === 0) out.push({ name: name, value: rhs });
+  }
+  return out;
+}
+
+function deriveFacetParamPairStrict(facet, v) {
+  var label = v && v.label || "";
+  var dataTok = (v && v.data != null && v.data !== "") ? encodeForParam(v.data) : "";
+  var labelTok = label ? encodeForParam(label) : "";
+
+  // Prefer the value's own toggleUrl; fallback to facet.labels[label].toggleUrl
+  var tUrl = (v && v.toggleUrl) ||
+             (facet && facet.labels && facet.labels[label] && facet.labels[label].toggleUrl) || "";
+
+  if (tUrl) {
+    var ps = parseAllFParams(tUrl);
+    // Prefer a pair whose RHS matches this value (label token first, then data token)
+    for (var i = ps.length - 1; i >= 0; i--) {
+      var p = ps[i];
+      if (p.value === labelTok || (dataTok && p.value === dataTok)) {
+        return { name: p.name, value: p.value };
+      }
+    }
+    // Else if there are f.* params, take the last one
+    if (ps.length) return { name: ps[ps.length - 1].name, value: ps[ps.length - 1].value };
+  }
+
+  // Otherwise use queryParam on the value or on labels[label]
+  var qsp = (v && v.queryParam) ||
+            (facet && facet.labels && facet.labels[label] && facet.labels[label].queryParam) || "";
+  if (qsp) {
+    var s = splitQsp(qsp);
+    if (s.name && s.value) return s;
+  }
+
+  // No synthesis fallback
+  return { name: "", value: "" };
+}
+
 /* === render/results.js === */
 var Results = (function () {
   // -------- JCU helpers --------
@@ -484,100 +540,63 @@ var FeaturedFilters = (function () {
     }
 
     for (var i = 0; i < values.length; i++) {
-  var v = values[i];
-  if (!v || !v.label) continue;
+      var v = values[i];
+      if (!v || !v.label) continue;
 
-  var label = v.label;
-  var ld = (facet.labels && facet.labels[label]) || {};
+      var label = v.label;
 
-  // Prefer encoded value from toggleUrl (labels or v), else queryParam, else fallback
-  var qsp    = (ld.queryParam || v.queryParam || "");
-  var toggle = (ld.toggleUrl  || v.toggleUrl  || "");
+      // Strict: prefer toggleUrl, then queryParam. Skip if unresolved.
+      var pair = deriveFacetParamPairStrict(facet, v);
+      if (!pair.name || !pair.value) continue;
 
-  var pair = { name: "", value: "" };
-  var source = "fallback";
+      var checkedAttr = v.selected ? ' checked="checked"' : '';
 
-  // 1) toggleUrl wins (keeps RHS encoded exactly as needed: pathways+and+bridging+programs)
-  if (toggle) {
-    var t = splitQspFromToggleUrl(toggle);
-    if (t.name)  pair.name  = t.name;
-    if (t.value) pair.value = t.value;
-    if (pair.name || pair.value) source = "toggleUrl";
-  }
+      if (isMulti) {
+        // MULTI - checkboxes
+        if (facetSlug === "study-area") {
+          b.add(
+            '      <div tabindex="0"' +
+            ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
+            ' class="p-b-075 p-l-075 p-r-075 select-label-text f-semibold"' +
+            '>'
+          );
+        } else {
+          b.add(
+            '      <div tabindex="0"' +
+            ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
+            ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
+            '>'
+          );
+        }
 
-  // 2) if toggleUrl missing/incomplete, try queryParam (keeps RHS encoded)
-  if ((!pair.name || !pair.value) && qsp) {
-    var s = splitQsp(qsp);
-    if (!pair.name && s.name)   pair.name  = s.name;
-    if (!pair.value && s.value) pair.value = s.value;
-    if (s.name || s.value) source = (source === "toggleUrl") ? "toggleUrl+queryParam" : "queryParam";
-  }
-
-  // 3) final fallback - encode machine value or label
-  if (!pair.name) {
-    pair.name = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-  }
-  if (!pair.value) {
-    var submitVal = (v.data != null && v.data !== "") ? v.data : label;
-    pair.value = encodeURIComponent(String(submitVal)).replace(/%20/g, "+");
-    source = (source === "fallback") ? "fallback:dataOrLabel" : (source + "+fallback");
-  }
-
-  var checkedAttr = v.selected ? ' checked="checked"' : '';
-
-  if (isMulti) {
-    // MULTI - checkboxes
-    if (facetSlug === "study-area") {
-      b.add(
-        '      <div tabindex="0"' +
-        ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
-        ' class="p-b-075 p-l-075 p-r-075 select-label-text f-semibold"' +
-        '>'
-      );
-    } else {
-      b.add(
-        '      <div tabindex="0"' +
-        ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
-        ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
-        '>'
-      );
+        b.add('        <label class="pointer d-block">');
+        b.add(
+          '          <input type="checkbox"' +
+          ' name="' + Html.esc(pair.name) + '"' +
+          ' value="' + Html.esc(pair.value) + '"' + checkedAttr +
+          '>'
+        );
+        b.add('          <span>' + Html.esc(formatFacetLabel(label, facetName)) + '</span>');
+        b.add('        </label>');
+        b.add('      </div>');
+      } else {
+        // SINGLE - clickable rows (unchanged, but keep pair values as data)
+        b.add(
+          '      <div tabindex="0"' +
+          ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
+          ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
+          ' data-param-name="' + Html.esc(pair.name) + '"' +
+          ' data-param-value="' + Html.esc(pair.value) + '"' +
+          '>'
+        );
+        b.add('        ' + Html.esc(formatFacetLabel(label, facetName)));
+        b.add('      </div>');
+      }
     }
-
-    b.add('        <label class="pointer d-block">');
-
-    // HTML-visible debug so you can inspect in Elements panel
-    b.add(
-      '          <input type="checkbox"' +
-      ' name="' + Html.esc(pair.name) + '"' +
-      ' value="' + Html.esc(pair.value) + '"' + checkedAttr +
-
-      '>'
-    );
-
-    b.add('          <span>' + Html.esc(formatFacetLabel(label, facetName)) + '</span>');
-    b.add('        </label>');
-    b.add('      </div>');
-  } else {
-    // SINGLE - clickable rows (unchanged, but keep pair values and toggle as data)
-    b.add(
-      '      <div tabindex="0"' +
-      ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
-      ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
-      ' data-param-name="' + Html.esc(pair.name) + '"' +
-      ' data-param-value="' + Html.esc(pair.value) + '"' +
-      ' data-toggleurl="' + Html.esc(toggle) + '"' +
-      '>'
-    );
-    b.add('        ' + Html.esc(formatFacetLabel(label, facetName)));
-    b.add('      </div>');
-  }
-}
-
 
     if(facetSlug === "study-area" && values.length > 14) {
         b.add('</div>');
     }
-
 
     if (isMulti) {
       b.add('      <section class="search-filter-buttons flex-shrink-0 col-12">');
@@ -633,25 +652,8 @@ var HeaderRow = (function () {
   }
 
   // parse all f.* pairs from a URL or query string, preserving RHS encoding
-  function parseAllFParams(urlOrQs) {
-    var out = [];
-    if (!urlOrQs) return out;
-    var q = String(urlOrQs);
-    var qi = q.indexOf("?");
-    if (qi >= 0) q = q.slice(qi + 1);
-    if (!q) return out;
-    var parts = q.split("&");
-    for (var i = 0; i < parts.length; i++) {
-      var seg = parts[i];
-      if (!seg) continue;
-      var eq = seg.indexOf("=");
-      if (eq < 0) continue;
-      var rawName = seg.slice(0, eq);
-      var rhs = seg.slice(eq + 1); // keep encoded
-      var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
-      if (name.indexOf("f.") === 0) out.push({ name: name, value: rhs, raw: seg });
-    }
-    return out;
+  function parseAllFParamsLocal(urlOrQs) {
+    return parseAllFParams(urlOrQs);
   }
 
   function selected(sd) {
@@ -664,81 +666,14 @@ var HeaderRow = (function () {
         var v = vals[j];
         if (!v || !v.selected) continue;
 
-        var label = v.label || "";
-        var ld = (facet.labels && facet.labels[label]) || {};
-        var queryParam = ld && ld.queryParam ? String(ld.queryParam) : "";
-        var toggleUrl  = (ld && ld.toggleUrl) || v.toggleUrl || "";
-
-        // seed from queryParam (specific to this label)
-        var name = "", value = "", source = "fallback";
-        if (queryParam) {
-          var eq = queryParam.indexOf("=");
-          if (eq > -1) {
-            name  = decodeURIComponent(queryParam.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-            value = queryParam.slice(eq + 1); // keep encoded
-            source = "queryParam";
-          }
-        }
-
-        // helper tokens to match against toggleUrl when needed
-        var labelToken = encodeForParam(label);
-        var dataToken  = (v.data != null && v.data !== "") ? encodeForParam(v.data) : "";
-
-        // if we don't have a complete pair, or toggleUrl can provide a better-matching RHS,
-        // search all f.* in toggleUrl and pick the one that matches THIS value
-        if (toggleUrl) {
-          var all = parseAllFParams(toggleUrl);
-
-          // prefer exact LHS name match first
-          var match = null;
-          if (name) {
-            for (var a = all.length - 1; a >= 0; a--) {
-              if (all[a].name === name) { match = all[a]; break; }
-            }
-          }
-
-          // otherwise match by RHS token (label first, then data)
-          if (!match && labelToken) {
-            for (var b = all.length - 1; b >= 0; b--) {
-              if (all[b].value === labelToken) { match = all[b]; break; }
-            }
-          }
-          if (!match && dataToken) {
-            for (var c = all.length - 1; c >= 0; c--) {
-              if (all[c].value === dataToken) { match = all[c]; break; }
-            }
-          }
-
-          // adopt the matched pair if it's more specific/correct
-          if (match) {
-            name = match.name || name;
-            value = match.value || value;
-            source = (source === "queryParam") ? "queryParam+toggleUrlRefine" : "toggleUrl";
-          }
-        }
-
-        // final fallbacks
-        if (!name) {
-          name = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-        }
-        if (!value) {
-          var submitVal = (v.data != null && v.data !== "") ? v.data : label;
-          value = encodeForParam(submitVal);
-          if (source === "fallback") source = "fallback:dataOrLabel";
-        }
-
-        // fix collapsed tokens like "pathways" -> use label token when richer
-        if (source.indexOf("toggleUrl") !== 0 && labelToken && labelToken !== value && labelToken.indexOf("+") > -1) {
-          value = labelToken;
-          source += "+labelOverride";
-        }
+        var pair = deriveFacetParamPairStrict(facet, v);
+        if (!pair.name || !pair.value) continue;
 
         chips.push({
-          label: label,
-          name: name,
-          value: value,
-          facetName: facet.name,
-          dbg: { source: source, toggleUrl: toggleUrl, queryParam: queryParam, chosenName: name, chosenValue: value }
+          label: v.label || "",
+          name: pair.name,
+          value: pair.value,
+          facetName: facet.name
         });
       }
     }
@@ -753,12 +688,6 @@ var HeaderRow = (function () {
         '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
         ' data-remove-name="' + Html.esca(c.name) + '"' +
         ' data-remove-value="' + Html.esca(c.value) + '"' +
-        // SSJS debug hooks so you can view in the DOM
-        ' data-dbg-source="' + Html.esca(c.dbg.source) + '"' +
-        ' data-dbg-toggle="' + Html.esca(c.dbg.toggleUrl) + '"' +
-        ' data-dbg-qsp="' + Html.esca(c.dbg.queryParam) + '"' +
-        ' data-dbg-final-name="' + Html.esca(c.dbg.chosenName) + '"' +
-        ' data-dbg-final-value="' + Html.esca(c.dbg.chosenValue) + '"' +
         '>' +
         Html.esc(formatFacetLabel(c.label, c.facetName)) +
         '</span>'
@@ -801,57 +730,21 @@ var FiltersModal = (function () {
     var values = facet.allValues || [];
     for (var i = 0; i < values.length; i++) {
       var v = values[i] || {};
-      var label = v.label || "";
-      if (!label) continue;
+      if (!v.label) continue;
 
-      // Prefer the precomputed queryParam (built using v.data when present)
-      var ld = (facet.labels && facet.labels[label]) || {};
-      var qsp = ld.queryParam || "";
-
-      // Parse name and value from queryParam if available
-      var pName = "";
-      var pValEncoded = "";
-
-      if (qsp) {
-        var eq = qsp.indexOf("=");
-        if (eq > -1) {
-          // LHS: decode '+' to space and %7C to '|'
-          pName = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-          // RHS: keep encoded token as-is so it round-trips correctly
-          pValEncoded = qsp.slice(eq + 1);
-        }
-      }
-
-      if (!pName && !pValEncoded && (ld.toggleUrl || v.toggleUrl)) {
-        var t = splitQspFromToggleUrl(ld.toggleUrl || v.toggleUrl);
-        if (t.name) pName = t.name;
-        if (t.value) pValEncoded = t.value;
-      }
-
-      // Fallbacks if labels[...].queryParam is missing:
-      if (!pName) {
-        // Try to infer a param name from the facet itself (same logic as elsewhere)
-        // Use an explicit facet.paramName if you add one upstream, otherwise default to a namespaced guess.
-        pName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-      }
-      if (!pValEncoded) {
-        // Submit the machine value when present, otherwise the label
-        var submitVal = (v.data != null && v.data !== "") ? v.data : label;
-        pValEncoded = encodeForParam(submitVal);
-      }
+      var pair = deriveFacetParamPairStrict(facet, v);
+      if (!pair.name || !pair.value) continue;
 
       var checked = v.selected ? ' checked="checked"' : "";
 
-      // Use label for display, value token for submission
       b.add('<div class="p-b-075">');
       b.add('<label class="flex align-start gap-050-column pointer select-label-text">');
-      b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
-      b.add('<div class="js-fbsearch-filters-modal--label-text" data-filter-name="' + Html.esca(label) + '">');
-      b.add('<div class="f-semibold">' + Html.esc(formatFacetLabel(label, facet.name)) + '</div>');
+      b.add('<input type="checkbox" name="' + Html.esca(pair.name) + '" value="' + Html.esca(pair.value) + '"' + checked + '>');
+      b.add('<div class="js-fbsearch-filters-modal--label-text" data-filter-name="' + Html.esca(v.label) + '">');
+      b.add('<div class="f-semibold">' + Html.esc(formatFacetLabel(v.label, facet.name)) + '</div>');
       b.add('</div>');
       b.add('</label>');
       b.add('</div>');
-
     }
 
     b.add('</div></div>');
