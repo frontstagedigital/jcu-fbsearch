@@ -57,6 +57,16 @@ function encodeForParam(val) {
   return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
 }
 
+function parseQsp(qsp) {
+  if (!qsp || typeof qsp !== "string") return { name: "", value: "" };
+  var i = qsp.indexOf("=");
+  if (i < 0) return { name: "", value: "" };
+  var rawName = qsp.slice(0, i);
+  var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
+  var value = qsp.slice(i + 1); // keep RHS encoded verbatim
+  return { name: name, value: value };
+}
+
 // Parse all f.* pairs from a URL or query string, preserving RHS encoding
 function parseAllFParams(urlOrQs) {
   var out = [];
@@ -627,6 +637,67 @@ var FeaturedFilters = (function () {
 
 /* === render/header-row.js === */
 var HeaderRow = (function () {
+  
+  // prefer toggleUrl; accept queryParam only if its RHS already matches label/data token
+  function findFacetPair(facetName, label, data, toggleUrl, queryParam) {
+    var labelToken = encodeForParam(label);
+    var dataToken  = (data != null && data !== "") ? encodeForParam(data) : "";
+    var wantTokens = [];
+    if (dataToken) wantTokens.push(dataToken);
+    wantTokens.push(labelToken); // label token used when data is absent
+
+    var qn = "", qv = "", qOk = false;
+    if (queryParam) {
+      var q = parseQsp(queryParam);
+      qn = q.name; qv = q.value;
+      if (qv && (qv === labelToken || (dataToken && qv === dataToken))) qOk = true;
+    }
+
+    // scan toggleUrl for best match
+    var best = null;
+    if (toggleUrl) {
+      var all = parseAllFParams(toggleUrl);
+
+      // 1) exact LHS + exact RHS token match (prefer data, then label), take the last occurrence
+      for (var t = 0; t < wantTokens.length && !best; t++) {
+        var tok = wantTokens[t];
+        for (var i = all.length - 1; i >= 0; i--) {
+          if ((qn && all[i].name === qn) && all[i].value === tok) { best = { name: all[i].name, value: all[i].value, source: "toggleUrl:lhs+rhs" }; break; }
+        }
+      }
+
+      // 2) any pair with exact RHS token match (prefer data, then label), take the last occurrence
+      for (var t2 = 0; t2 < wantTokens.length && !best; t2++) {
+        var tok2 = wantTokens[t2];
+        for (var j = all.length - 1; j >= 0; j--) {
+          if (all[j].value === tok2) { best = { name: all[j].name, value: all[j].value, source: "toggleUrl:rhsExact" }; break; }
+        }
+      }
+
+      // 3) single LHS candidate for this facet group, if unambiguous
+      if (!best) {
+        var facetBase = "f." + String(facetName || "");
+        var candidates = [];
+        for (var k = 0; k < all.length; k++) {
+          var base = all[k].name.split("|")[0]; // e.g. "f.Study level"
+          if (base === facetBase) candidates.push(all[k]);
+        }
+        if (candidates.length === 1) {
+          best = { name: candidates[0].name, value: candidates[0].value, source: "toggleUrl:lhsOnly" };
+        }
+      }
+    }
+
+    // if toggleUrl gave a solid match, use it
+    if (best) return best;
+
+    // otherwise accept queryParam only if its RHS already matches the correct token
+    if (qOk) return { name: qn, value: qv, source: "queryParam:rhsExact" };
+
+    // final guarded fallback: still return queryParam if present, else empty
+    if (qn && qv) return { name: qn, value: qv, source: "queryParam:fallback" };
+    return { name: "", value: "", source: "none" };
+  }
 
   function featured(sd, G) {
     if (G && G.hideFacets) return "";
