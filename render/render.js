@@ -53,8 +53,8 @@ function splitQsp(qsp) {
 
 // Use title case for Study area and Location; cap-first for others
 function formatFacetLabel(label, facetName) {
-  var slug = slug(facetName);
-  if (slug === "study-area" || slug === "location") {
+  var facetSlug = slug(facetName);
+  if (facetSlug === "study-area" || facetSlug === "location") {
     return titleCaseLabel(label);
   }
   return capFirstLabel(label);
