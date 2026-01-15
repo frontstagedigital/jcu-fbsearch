@@ -615,7 +615,6 @@ var FeaturedFilters = (function () {
 })();
 
 
-
 /* === render/header-row.js === */
 var HeaderRow = (function () {
   function featured(sd, G) {
@@ -631,6 +630,7 @@ var HeaderRow = (function () {
     return b.toString();
   }
 
+  // Always prefer toggleUrl for chip name/value
   function selected(sd) {
     var chips = [];
     for (var i = 0; i < sd.facets.length; i++) {
@@ -643,23 +643,25 @@ var HeaderRow = (function () {
         var label = v.label || "";
         var ld = (facet.labels && facet.labels[label]) || {};
 
-        // 1) Start with queryParam if present
-        var qsp = ld.queryParam || "";
-        var name = "", value = "";
-        if (qsp) {
-          var eq = qsp.indexOf("=");
-          if (eq > -1) {
-            name  = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-            value = qsp.slice(eq + 1); // keep RHS encoded
-          }
+        var name = "";
+        var value = "";
+
+        // 1) Prefer toggleUrl if present anywhere (value must stay encoded)
+        var tu = (ld && ld.toggleUrl) || v.toggleUrl || "";
+        if (tu) {
+          var t = splitQspFromToggleUrl(tu); // {name, value} - value is encoded e.g. pathways+and+bridging+programs
+          if (t.name)  name  = t.name;
+          if (t.value) value = t.value;
         }
 
-        // 2) ALWAYS override with toggleUrl if available - it has the canonical encoded RHS
-        var tu = ld.toggleUrl || v.toggleUrl || "";
-        if (tu) {
-          var t = splitQspFromToggleUrl(tu);
-          if (t.name)  name  = t.name;
-          if (t.value) value = t.value;  // eg 'pathways+and+bridging+programs'
+        // 2) If still missing, use queryParam (encoded RHS)
+        if ((!name || !value) && ld && ld.queryParam) {
+          var qsp = ld.queryParam;
+          var eq = qsp.indexOf("=");
+          if (eq > -1) {
+            name  = name  || decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+            value = value || qsp.slice(eq + 1);
+          }
         }
 
         // 3) Fallbacks
@@ -693,6 +695,7 @@ var HeaderRow = (function () {
     selected: selected
   };
 })();
+
 
 
 /* === render/filters-modal.js === */
