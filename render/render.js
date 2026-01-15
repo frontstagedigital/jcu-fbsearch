@@ -615,8 +615,10 @@ var FeaturedFilters = (function () {
 })();
 
 
+
 /* === render/header-row.js === */
 var HeaderRow = (function () {
+
   function featured(sd, G) {
     if (G && G.hideFacets) return "";
 
@@ -630,12 +632,44 @@ var HeaderRow = (function () {
     return b.toString();
   }
 
-  // Always prefer toggleUrl for chip name/value
+  // local helper: extract last f.* param from a URL or querystring
+  function parseNameValueFromToggleUrl(url) {
+    var res = { name: "", value: "" };
+    if (!url || typeof url !== "string") return res;
+
+    // allow full URLs or just "?a=b&c=d"
+    var qStart = url.indexOf("?");
+    var q = qStart >= 0 ? url.slice(qStart + 1) : url;
+
+    if (!q) return res;
+    var parts = q.split("&");
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var seg = parts[i];
+      if (!seg) continue;
+      var eq = seg.indexOf("=");
+      if (eq < 0) continue;
+
+      var rawName = seg.slice(0, eq);
+      // decode '+' to space and %7C to '|'
+      var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
+
+      if (name.indexOf("f.") === 0) {
+        res.name = name;           // keep as decoded
+        res.value = seg.slice(eq + 1); // keep RHS encoded verbatim (eg "pathways+and+bridging+programs")
+        return res;
+      }
+    }
+    return res;
+  }
+
+  // Build selected chips - prefer toggleUrl; add SSJS debug attrs
   function selected(sd) {
     var chips = [];
+
     for (var i = 0; i < sd.facets.length; i++) {
       var facet = sd.facets[i];
       var vals = facet.allValues || [];
+
       for (var j = 0; j < vals.length; j++) {
         var v = vals[j];
         if (!v || !v.selected) continue;
@@ -643,48 +677,73 @@ var HeaderRow = (function () {
         var label = v.label || "";
         var ld = (facet.labels && facet.labels[label]) || {};
 
-        var name = "";
-        var value = "";
+        var chosen = {
+          name: "",
+          value: "",
+          source: "fallback",
+          toggleUrl: (ld && ld.toggleUrl) || v.toggleUrl || "",
+          queryParam: ld && ld.queryParam || ""
+        };
 
-        // 1) Prefer toggleUrl if present anywhere (value must stay encoded)
-        var tu = (ld && ld.toggleUrl) || v.toggleUrl || "";
-        if (tu) {
-          var t = splitQspFromToggleUrl(tu); // {name, value} - value is encoded e.g. pathways+and+bridging+programs
-          if (t.name)  name  = t.name;
-          if (t.value) value = t.value;
+        // 1) Prefer toggleUrl if present
+        if (chosen.toggleUrl) {
+          var t = parseNameValueFromToggleUrl(chosen.toggleUrl);
+          if (t.name)  { chosen.name  = t.name;  chosen.source = "toggleUrl"; }
+          if (t.value) { chosen.value = t.value; chosen.source = "toggleUrl"; }
         }
 
         // 2) If still missing, use queryParam (encoded RHS)
-        if ((!name || !value) && ld && ld.queryParam) {
-          var qsp = ld.queryParam;
-          var eq = qsp.indexOf("=");
+        if ((!chosen.name || !chosen.value) && chosen.queryParam) {
+          var qp = chosen.queryParam;
+          var eq = qp.indexOf("=");
           if (eq > -1) {
-            name  = name  || decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-            value = value || qsp.slice(eq + 1);
+            if (!chosen.name)  chosen.name  = decodeURIComponent(qp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+            if (!chosen.value) chosen.value = qp.slice(eq + 1); // keep encoded
+            if (chosen.source !== "toggleUrl") chosen.source = "queryParam";
           }
         }
 
         // 3) Fallbacks
-        if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-        if (!value) value = encodeURIComponent((v.data != null && v.data !== "") ? v.data : label).replace(/%20/g, "+");
+        if (!chosen.name)  chosen.name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+        if (!chosen.value) {
+          var submitVal = (v.data != null && v.data !== "") ? v.data : label;
+          chosen.value = encodeForParam(submitVal);
+          if (chosen.source === "fallback") chosen.source = "fallback:dataOrLabel";
+        }
 
-        chips.push({ label: label, name: name, value: value, facetName: facet.name });
+        chips.push({
+          label: label,
+          name: chosen.name,
+          value: chosen.value,
+          facetName: facet.name,
+          dbg: chosen
+        });
       }
     }
+
     if (!chips.length) return "";
 
     var b = Html.buffer();
     b.add('<div id="selected-filters" class="columns flex-nowrap align-center gap-050-column">');
+
     for (var k = 0; k < chips.length; k++) {
       var c = chips[k];
       b.add(
         '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
-        ' data-remove-name="' + Html.esca(c.name) + '"' +
-        ' data-remove-value="' + Html.esca(c.value) + '">' +
+          ' data-remove-name="' + Html.esca(c.name) + '"' +
+          ' data-remove-value="' + Html.esca(c.value) + '"' +
+          // SSJS-visible debug attributes so you can inspect in HTML
+          ' data-dbg-source="' + Html.esca(c.dbg.source) + '"' +
+          ' data-dbg-toggle="' + Html.esca(c.dbg.toggleUrl) + '"' +
+          ' data-dbg-qsp="' + Html.esca(c.dbg.queryParam) + '"' +
+          ' data-dbg-final-name="' + Html.esca(c.name) + '"' +
+          ' data-dbg-final-value="' + Html.esca(c.value) + '"' +
+        '>' +
         Html.esc(formatFacetLabel(c.label, c.facetName)) +
         '</span>'
       );
     }
+
     b.add('<span class="f-underline pointer">Clear all</span>');
     b.add('</div>');
     return b.toString();
@@ -695,6 +754,7 @@ var HeaderRow = (function () {
     selected: selected
   };
 })();
+
 
 
 
