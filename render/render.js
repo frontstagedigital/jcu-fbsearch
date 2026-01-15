@@ -35,7 +35,7 @@ function encodeForParam(val) {
   return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
 }
 
-// value token rule: use label for all facets except "Student type" which uses data when present
+// value token rule: use label for all facets, except "Student type" which uses data if present
 function valueTokenForFacet(facetName, data, label) {
   var name = String(facetName || "");
   if (name.toLowerCase() === "student type") {
@@ -575,12 +575,12 @@ var HeaderRow = (function () {
           var eq = qsp.indexOf("=");
           if (eq > -1) {
             name  = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-            value = qsp.slice(eq + 1); // keep token as-is
+            // value = qsp.slice(eq + 1); // previous behaviour
           }
         }
-        // fallback if queryParam missing: value must follow the global rule
-        if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-        if (!value) value = valueTokenForFacet(facet.name, v.data, label);
+        // robust fallbacks
+        if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name + "|" + (facet.paramDataKey || (facet.name === "Study area" ? "studyArea" : facet.name.toLowerCase())));
+        value = valueTokenForFacet(facet.name, v.data, label);
 
         chips.push({ label: label, name: name, value: value });
       }
@@ -632,34 +632,28 @@ var FiltersModal = (function () {
       var label = v.label || "";
       if (!label) continue;
 
-      // Prefer the precomputed queryParam (built using v.data when present)
+      // Prefer the precomputed queryParam for the LHS name only
       var ld = (facet.labels && facet.labels[label]) || {};
       var qsp = ld.queryParam || "";
 
-      // Parse name and value from queryParam if available
+      // Parse name from queryParam if available
       var pName = "";
-      var pValEncoded = "";
 
       if (qsp) {
         var eq = qsp.indexOf("=");
         if (eq > -1) {
           // LHS: decode '+' to space and %7C to '|'
           pName = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-          // RHS: keep encoded token as-is so it round-trips correctly
-          pValEncoded = qsp.slice(eq + 1);
         }
       }
 
-      // Fallbacks if labels[...].queryParam is missing:
+      // Fallback if labels[...].queryParam is missing: infer a namespaced param
       if (!pName) {
-        // Try to infer a param name from the facet itself (same logic as elsewhere)
-        // Use an explicit facet.paramName if you add one upstream, otherwise default to a namespaced guess.
-        pName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+        pName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name + "|" + (facet.paramDataKey || (facet.name === "Study area" ? "studyArea" : facet.name.toLowerCase())));
       }
-      if (!pValEncoded) {
-        // IMPORTANT: follow the same global rule as everywhere else
-        pValEncoded = valueTokenForFacet(facet.name, v.data, label);
-      }
+
+      // ALWAYS use our simplified RHS token rule (fix for pathways)
+      var pValEncoded = valueTokenForFacet(facet.name, v.data, label);
 
       var checked = v.selected ? ' checked="checked"' : "";
 
@@ -784,7 +778,7 @@ var CountBar = (function () {
     var key = (G && typeof G.view_param === "string" && G.view_param) ? G.view_param : "ui_view";
     var paramName = key;
     var currentView =
-      (G && typeof G.get_view === "string" && G.get_view) ||
+      (G && G.get_view && typeof G.get_view === "string" && G.get_view) ||
       (parsedQS[key]) ||
       firstKey(viewOptions, "default");
     var b = Html.buffer();
