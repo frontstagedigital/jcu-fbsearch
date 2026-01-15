@@ -632,28 +632,26 @@ var HeaderRow = (function () {
     return b.toString();
   }
 
-  // local helper: extract last f.* param from a URL or querystring
-  function parseNameValueFromToggleUrl(url) {
-    var res = { name: "", value: "" };
-    if (!url || typeof url !== "string") return res;
-    var qStart = url.indexOf("?");
-    var q = qStart >= 0 ? url.slice(qStart + 1) : url;
-    if (!q) return res;
+  // parse all f.* pairs from a URL or query string, preserving RHS encoding
+  function parseAllFParams(urlOrQs) {
+    var out = [];
+    if (!urlOrQs) return out;
+    var q = String(urlOrQs);
+    var qi = q.indexOf("?");
+    if (qi >= 0) q = q.slice(qi + 1);
+    if (!q) return out;
     var parts = q.split("&");
-    for (var i = parts.length - 1; i >= 0; i--) {
+    for (var i = 0; i < parts.length; i++) {
       var seg = parts[i];
       if (!seg) continue;
       var eq = seg.indexOf("=");
       if (eq < 0) continue;
       var rawName = seg.slice(0, eq);
+      var rhs = seg.slice(eq + 1); // keep encoded
       var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
-      if (name.indexOf("f.") === 0) {
-        res.name = name;                 // decoded LHS
-        res.value = seg.slice(eq + 1);   // keep RHS encoded verbatim
-        return res;
-      }
+      if (name.indexOf("f.") === 0) out.push({ name: name, value: rhs, raw: seg });
     }
-    return res;
+    return out;
   }
 
   function selected(sd) {
@@ -662,69 +660,85 @@ var HeaderRow = (function () {
     for (var i = 0; i < sd.facets.length; i++) {
       var facet = sd.facets[i];
       var vals = facet.allValues || [];
-
       for (var j = 0; j < vals.length; j++) {
         var v = vals[j];
         if (!v || !v.selected) continue;
 
         var label = v.label || "";
         var ld = (facet.labels && facet.labels[label]) || {};
+        var queryParam = ld && ld.queryParam ? String(ld.queryParam) : "";
+        var toggleUrl  = (ld && ld.toggleUrl) || v.toggleUrl || "";
 
-        var chosen = {
-          name: "",
-          value: "",
-          source: "fallback",
-          toggleUrl: (ld && ld.toggleUrl) || v.toggleUrl || "",
-          queryParam: (ld && ld.queryParam) || ""
-        };
-
-        // 1) Prefer toggleUrl if it contains the f.* pair
-        if (chosen.toggleUrl) {
-          var t = parseNameValueFromToggleUrl(chosen.toggleUrl);
-          if (t.name)  { chosen.name  = t.name;  chosen.source = "toggleUrl"; }
-          if (t.value) { chosen.value = t.value; chosen.source = "toggleUrl"; }
-        }
-
-        // 2) Fall back to queryParam if needed (RHS stays encoded)
-        if ((!chosen.name || !chosen.value) && chosen.queryParam) {
-          var qp = chosen.queryParam;
-          var eq = qp.indexOf("=");
+        // seed from queryParam (specific to this label)
+        var name = "", value = "", source = "fallback";
+        if (queryParam) {
+          var eq = queryParam.indexOf("=");
           if (eq > -1) {
-            if (!chosen.name)  chosen.name  = decodeURIComponent(qp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-            if (!chosen.value) chosen.value = qp.slice(eq + 1);
-            if (chosen.source !== "toggleUrl") chosen.source = "queryParam";
+            name  = decodeURIComponent(queryParam.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+            value = queryParam.slice(eq + 1); // keep encoded
+            source = "queryParam";
           }
         }
 
-        // 3) Final fallbacks (data or label)
-        if (!chosen.name) {
-          chosen.name = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-        }
-        if (!chosen.value) {
-          var submitVal = (v.data != null && v.data !== "") ? v.data : label;
-          chosen.value = encodeForParam(submitVal);
-          if (chosen.source === "fallback") chosen.source = "fallback:dataOrLabel";
+        // helper tokens to match against toggleUrl when needed
+        var labelToken = encodeForParam(label);
+        var dataToken  = (v.data != null && v.data !== "") ? encodeForParam(v.data) : "";
+
+        // if we don't have a complete pair, or toggleUrl can provide a better-matching RHS,
+        // search all f.* in toggleUrl and pick the one that matches THIS value
+        if (toggleUrl) {
+          var all = parseAllFParams(toggleUrl);
+
+          // prefer exact LHS name match first
+          var match = null;
+          if (name) {
+            for (var a = all.length - 1; a >= 0; a--) {
+              if (all[a].name === name) { match = all[a]; break; }
+            }
+          }
+
+          // otherwise match by RHS token (label first, then data)
+          if (!match && labelToken) {
+            for (var b = all.length - 1; b >= 0; b--) {
+              if (all[b].value === labelToken) { match = all[b]; break; }
+            }
+          }
+          if (!match && dataToken) {
+            for (var c = all.length - 1; c >= 0; c--) {
+              if (all[c].value === dataToken) { match = all[c]; break; }
+            }
+          }
+
+          // adopt the matched pair if it's more specific/correct
+          if (match) {
+            name = match.name || name;
+            value = match.value || value;
+            source = (source === "queryParam") ? "queryParam+toggleUrlRefine" : "toggleUrl";
+          }
         }
 
-        // 4) Label override if queryParam/data collapsed the value (eg "pathways")
-        //    We only switch if the label token differs and is richer (contains '+').
-        var labelToken = encodeForParam(label);
-        if (
-          chosen.source !== "toggleUrl" &&      // we didn't already get a good token
-          labelToken &&                         // label exists
-          labelToken !== chosen.value &&        // different from current value ("pathways")
-          labelToken.indexOf("+") > -1          // richer token like "pathways+and+bridging+programs"
-        ) {
-          chosen.value  = labelToken;
-          chosen.source = chosen.source + "+labelOverride";
+        // final fallbacks
+        if (!name) {
+          name = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+        }
+        if (!value) {
+          var submitVal = (v.data != null && v.data !== "") ? v.data : label;
+          value = encodeForParam(submitVal);
+          if (source === "fallback") source = "fallback:dataOrLabel";
+        }
+
+        // fix collapsed tokens like "pathways" -> use label token when richer
+        if (source.indexOf("toggleUrl") !== 0 && labelToken && labelToken !== value && labelToken.indexOf("+") > -1) {
+          value = labelToken;
+          source += "+labelOverride";
         }
 
         chips.push({
           label: label,
-          name: chosen.name,
-          value: chosen.value,
+          name: name,
+          value: value,
           facetName: facet.name,
-          dbg: chosen
+          dbg: { source: source, toggleUrl: toggleUrl, queryParam: queryParam, chosenName: name, chosenValue: value }
         });
       }
     }
@@ -737,14 +751,14 @@ var HeaderRow = (function () {
       var c = chips[k];
       b.add(
         '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
-          ' data-remove-name="' + Html.esca(c.name) + '"' +
-          ' data-remove-value="' + Html.esca(c.value) + '"' +
-          // SSJS-visible debug:
-          ' data-dbg-source="' + Html.esca(c.dbg.source) + '"' +
-          ' data-dbg-toggle="' + Html.esca(c.dbg.toggleUrl) + '"' +
-          ' data-dbg-qsp="' + Html.esca(c.dbg.queryParam) + '"' +
-          ' data-dbg-final-name="' + Html.esca(c.name) + '"' +
-          ' data-dbg-final-value="' + Html.esca(c.value) + '"' +
+        ' data-remove-name="' + Html.esca(c.name) + '"' +
+        ' data-remove-value="' + Html.esca(c.value) + '"' +
+        // SSJS debug hooks so you can view in the DOM
+        ' data-dbg-source="' + Html.esca(c.dbg.source) + '"' +
+        ' data-dbg-toggle="' + Html.esca(c.dbg.toggleUrl) + '"' +
+        ' data-dbg-qsp="' + Html.esca(c.dbg.queryParam) + '"' +
+        ' data-dbg-final-name="' + Html.esca(c.dbg.chosenName) + '"' +
+        ' data-dbg-final-value="' + Html.esca(c.dbg.chosenValue) + '"' +
         '>' +
         Html.esc(formatFacetLabel(c.label, c.facetName)) +
         '</span>'
@@ -754,6 +768,7 @@ var HeaderRow = (function () {
     b.add('</div>');
     return b.toString();
   }
+
 
 
   return {
