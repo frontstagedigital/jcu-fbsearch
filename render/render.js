@@ -634,69 +634,71 @@ var FeaturedFilters = (function () {
 })();
 
 
-
 /* === render/header-row.js === */
 var HeaderRow = (function () {
-  
-  // prefer toggleUrl; accept queryParam only if its RHS already matches label/data token
-  function findFacetPair(facetName, label, data, toggleUrl, queryParam) {
-    var labelToken = encodeForParam(label);
-    var dataToken  = (data != null && data !== "") ? encodeForParam(data) : "";
-    var wantTokens = [];
-    if (dataToken) wantTokens.push(dataToken);
-    wantTokens.push(labelToken); // label token used when data is absent
 
-    var qn = "", qv = "", qOk = false;
-    if (queryParam) {
-      var q = parseQsp(queryParam);
-      qn = q.name; qv = q.value;
-      if (qv && (qv === labelToken || (dataToken && qv === dataToken))) qOk = true;
+  // Always derive the facet name/value from toggleUrl (RHS kept verbatim).
+  // Order:
+  // 1) RHS == encoded label token
+  // 2) RHS == encoded data token (if provided)
+  // 3) If only one f.* pair present in toggleUrl, use it
+  // 4) Prefer f.* whose LHS mentions this facet's base name
+  function findFacetPair(facetName, label, data, toggleUrl /* queryParam ignored */) {
+    function encToken(s){ return encodeURIComponent(String(s == null ? "" : s)).replace(/%20/g, "+"); }
+    function parseAllF(urlOrQs) {
+      var out = [];
+      if (!urlOrQs) return out;
+      var q = String(urlOrQs);
+      var qi = q.indexOf("?");
+      if (qi >= 0) q = q.slice(qi + 1);
+      if (!q) return out;
+      var parts = q.split("&");
+      for (var i = 0; i < parts.length; i++) {
+        var seg = parts[i];
+        if (!seg) continue;
+        var eq = seg.indexOf("=");
+        if (eq < 0) continue;
+        var rawName = seg.slice(0, eq);
+        var rhs = seg.slice(eq + 1); // keep encoded as-is
+        var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
+        if (name.indexOf("f.") === 0) out.push({ name: name, value: rhs, raw: seg });
+      }
+      return out;
     }
 
-    // scan toggleUrl for best match
-    var best = null;
-    if (toggleUrl) {
-      var all = parseAllFParams(toggleUrl);
+    var labelToken = encToken(label);
+    var dataToken  = (data != null && data !== "") ? encToken(data) : "";
+    var pairs = parseAllF(toggleUrl || "");
 
-      // 1) exact LHS + exact RHS token match (prefer data, then label), take the last occurrence
-      for (var t = 0; t < wantTokens.length && !best; t++) {
-        var tok = wantTokens[t];
-        for (var i = all.length - 1; i >= 0; i--) {
-          if ((qn && all[i].name === qn) && all[i].value === tok) { best = { name: all[i].name, value: all[i].value, source: "toggleUrl:lhs+rhs" }; break; }
-        }
+    // 1) RHS == encoded label
+    for (var i = pairs.length - 1; i >= 0; i--) {
+      if (pairs[i].value === labelToken) {
+        return { name: pairs[i].name, value: pairs[i].value, source: "toggleUrl:labelRhs" };
       }
-
-      // 2) any pair with exact RHS token match (prefer data, then label), take the last occurrence
-      for (var t2 = 0; t2 < wantTokens.length && !best; t2++) {
-        var tok2 = wantTokens[t2];
-        for (var j = all.length - 1; j >= 0; j--) {
-          if (all[j].value === tok2) { best = { name: all[j].name, value: all[j].value, source: "toggleUrl:rhsExact" }; break; }
-        }
-      }
-
-      // 3) single LHS candidate for this facet group, if unambiguous
-      if (!best) {
-        var facetBase = "f." + String(facetName || "");
-        var candidates = [];
-        for (var k = 0; k < all.length; k++) {
-          var base = all[k].name.split("|")[0]; // e.g. "f.Study level"
-          if (base === facetBase) candidates.push(all[k]);
-        }
-        if (candidates.length === 1) {
-          best = { name: candidates[0].name, value: candidates[0].value, source: "toggleUrl:lhsOnly" };
+    }
+    // 2) RHS == encoded data
+    if (dataToken) {
+      for (var j = pairs.length - 1; j >= 0; j--) {
+        if (pairs[j].value === dataToken) {
+          return { name: pairs[j].name, value: pairs[j].value, source: "toggleUrl:dataRhs" };
         }
       }
     }
+    // 3) Only one f.* pair present
+    if (pairs.length === 1) {
+      return { name: pairs[0].name, value: pairs[0].value, source: "toggleUrl:single" };
+    }
+    // 4) Prefer LHS that mentions the facet base (e.g. "f.Study level")
+    var facetBase = "f." + String(facetName || "");
+    for (var k = pairs.length - 1; k >= 0; k--) {
+      var base = pairs[k].name.split("|")[0];
+      if (base === facetBase) {
+        return { name: pairs[k].name, value: pairs[k].value, source: "toggleUrl:lhsHint" };
+      }
+    }
 
-    // if toggleUrl gave a solid match, use it
-    if (best) return best;
-
-    // otherwise accept queryParam only if its RHS already matches the correct token
-    if (qOk) return { name: qn, value: qv, source: "queryParam:rhsExact" };
-
-    // final guarded fallback: still return queryParam if present, else empty
-    if (qn && qv) return { name: qn, value: qv, source: "queryParam:fallback" };
-    return { name: "", value: "", source: "none" };
+    // Nothing usable found inside toggleUrl (shouldn't happen if it's always present)
+    return { name: "", value: "", source: "toggleUrl:none" };
   }
 
   function featured(sd, G) {
@@ -724,7 +726,7 @@ var HeaderRow = (function () {
 
         var label = v.label || "";
         var ld = (facet.labels && facet.labels[label]) || {};
-        var queryParam = ld && ld.queryParam ? String(ld.queryParam) : "";
+        var queryParam = ld && ld.queryParam ? String(ld.queryParam) : ""; // ignored for pairing, still surfaced in dbg
         var toggleUrl  = (ld && ld.toggleUrl) || v.toggleUrl || "";
 
         var pair = findFacetPair(facet.name, label, v.data, toggleUrl, queryParam);
@@ -750,7 +752,7 @@ var HeaderRow = (function () {
         '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
         ' data-remove-name="' + Html.esca(c.name) + '"' +
         ' data-remove-value="' + Html.esca(c.value) + '"' +
-        // debug hooks
+        // debug hooks (left intact)
         ' data-dbg-source="' + Html.esca(c.dbg.source) + '"' +
         ' data-dbg-toggle="' + Html.esca(c.dbg.toggleUrl) + '"' +
         ' data-dbg-qsp="' + Html.esca(c.dbg.queryParam) + '"' +
@@ -771,6 +773,7 @@ var HeaderRow = (function () {
     selected: selected
   };
 })();
+
 
 
 
