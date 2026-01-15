@@ -87,6 +87,9 @@ function parseAllFParams(urlOrQs) {
   }
   return out;
 }
+function facetBaseName(facetName) {
+  return "f." + String(facetName || "");
+}
 
 function findFacetPair(facetName, label, data, toggleUrl, queryParam) {
     var base = facetBaseName(facetName);
@@ -635,12 +638,6 @@ var FeaturedFilters = (function () {
 
 /* === render/header-row.js === */
 var HeaderRow = (function () {
-
-  function facetBaseName(facetName) {
-    return "f." + String(facetName || "");
-  }
-
-  
 
   function featured(sd, G) {
     if (G && G.hideFacets) return "";
