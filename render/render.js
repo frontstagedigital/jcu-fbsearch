@@ -1,6 +1,3 @@
-
-// === helpers shared across modules ===
-
 // simple title case for UI labels - preserves acronyms, keeps small words lower-case mid-phrase
 function titleCaseLabel(str) {
   var STOP = {
@@ -28,120 +25,6 @@ function titleCaseLabel(str) {
   }
   return parts.join(" ");
 }
-
-// simple first character uppercase
-function capFirstLabel(str) {
-  var s = String(str == null ? "" : str);
-  if (!s) return s;
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function slug(s) {
-  return String(s || "")
-    .toLowerCase()
-    .replace(/&amp;/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-// Use title case for Study area and Location; cap-first for others
-function formatFacetLabel(label, facetName) {
-  var facetSlug = slug(facetName);
-  if (facetSlug === "study-area" || facetSlug === "location") {
-    return titleCaseLabel(label);
-  }
-  return capFirstLabel(label);
-}
-
-function encodeForParam(val) {
-  return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
-}
-
-function parseQsp(qsp) {
-  if (!qsp || typeof qsp !== "string") return { name: "", value: "" };
-  var i = qsp.indexOf("=");
-  if (i < 0) return { name: "", value: "" };
-  var rawName = qsp.slice(0, i);
-  var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
-  var value = qsp.slice(i + 1); // keep RHS encoded verbatim
-  return { name: name, value: value };
-}
-// Parse all f.* pairs from a URL or query string, preserving RHS encoding
-function parseAllFParams(urlOrQs) {
-  var out = [];
-  if (!urlOrQs) return out;
-  var q = String(urlOrQs);
-  var qi = q.indexOf("?");
-  if (qi >= 0) q = q.slice(qi + 1);
-  if (!q) return out;
-  var parts = q.split("&");
-  for (var i = 0; i < parts.length; i++) {
-    var seg = parts[i];
-    if (!seg) continue;
-    var eq = seg.indexOf("=");
-    if (eq < 0) continue;
-    var rawName = seg.slice(0, eq);
-    var rhs = seg.slice(eq + 1); // keep encoded
-    var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
-    if (name.indexOf("f.") === 0) out.push({ name: name, value: rhs, raw: seg });
-  }
-  return out;
-}
-function facetBaseName(facetName) {
-  return "f." + String(facetName || "");
-}
-
-function findFacetPair(facetName, label, data, toggleUrl, queryParam) {
-    var base = facetBaseName(facetName);
-    var labelToken = encodeForParam(label);
-    var dataToken  = (data != null && data !== "") ? encodeForParam(data) : "";
-    var want = [];
-    if (dataToken) want.push(dataToken);
-    want.push(labelToken);
-
-    // 1) exact match from the CURRENT URL for this facet base (last occurrence wins)
-    var fromUrl = parseAllFParams((typeof window !== "undefined" && window.location && window.location.search) ? window.location.search : "");
-    var best = null;
-    for (var w = 0; w < want.length && !best; w++) {
-      var tok = want[w];
-      for (var i = fromUrl.length - 1; i >= 0; i--) {
-        var p = fromUrl[i];
-        if (p && p.name && p.value != null) {
-          var pBase = p.name.split("|")[0];
-          if (pBase === base && p.value === tok) {
-            best = { name: p.name, value: p.value, source: "url:rhsExact" };
-            break;
-          }
-        }
-      }
-    }
-    if (best) return best;
-
-    // 2) accept queryParam only if RHS token already equals label or data token
-    if (queryParam) {
-      var q = parseQsp(queryParam);
-      if (q.value && (q.value === labelToken || (dataToken && q.value === dataToken))) {
-        return { name: q.name, value: q.value, source: "queryParam:rhsExact" };
-      }
-    }
-
-    // 3) guarded fallback: infer LHS from any URL pair for this facet base, and use the label token as RHS
-    //    This keeps behaviour deterministic even if upstream data is missing.
-    for (var j = fromUrl.length - 1; j >= 0; j--) {
-      var p2 = fromUrl[j];
-      if (p2 && p2.name && p2.name.split("|")[0] === base) {
-        return { name: p2.name, value: labelToken, source: "url:lhsOnly+labelToken" };
-      }
-    }
-
-    // 4) final fallback: if queryParam exists, use it as-is; otherwise empty
-    if (queryParam) {
-      var q2 = parseQsp(queryParam);
-      if (q2.name && q2.value) return { name: q2.name, value: q2.value, source: "queryParam:fallback" };
-    }
-    return { name: "", value: "", source: "none" };
-  }
-
 
 /* === render/results.js === */
 var Results = (function () {
@@ -460,6 +343,11 @@ var Results = (function () {
     return b.toString();
   }
 
+
+
+
+
+
   function render(api, G) {
     function getViewParamName(Gx) {
       return (Gx && typeof Gx.view_param === "string" && Gx.view_param) ? Gx.view_param : "ui_view";
@@ -502,8 +390,25 @@ var Results = (function () {
 
 /* === render/featured-filters.js === */
 var FeaturedFilters = (function () {
+  function slug(s) {
+    return String(s || "")
+      .toLowerCase()
+      .replace(/&amp;/g, "and")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+  }
 
-  // adds checked="checked" when v.selected is true
+  function splitQsp(qsp) {
+    if (!qsp || typeof qsp !== "string") return { name: "", value: "" };
+    var i = qsp.indexOf("=");
+    if (i < 0) return { name: "", value: "" };
+    var rawName = qsp.slice(0, i);
+    var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/g, "|"));
+    var value = qsp.slice(i + 1);
+    return { name: name, value: value };
+  }
+
+  // UPDATED: adds checked="checked" when v.selected is true
   function block(facet) {
     var facetName = facet.name;
     var facetSlug = slug(facetName);
@@ -540,21 +445,15 @@ var FeaturedFilters = (function () {
 
       var label = v.label;
       var ld = (facet.labels && facet.labels[label]) || {};
-      var toggle = (ld.toggleUrl  || v.toggleUrl  || "");
-      var qsp    = (ld.queryParam || v.queryParam || "");
-
-      // Preferred strict derivation
-      var pair = findFacetPair(facetName, label, v.data, toggle, qsp);
-      if (!pair.name || !pair.value) {
-        // skip this option if we cannot reliably derive the pair
-        continue;
-      }
-
+      var qsp = ld.queryParam || "";
+      var toggle = ld.toggleUrl || "";
+      var pair = splitQsp(qsp); // { name, value } (value ignored by build)
+      var __valTok = valueTokenForFacet(facetName, v.data, label);
       var checkedAttr = v.selected ? ' checked="checked"' : '';
 
       if (isMulti) {
         // MULTI - checkboxes
-        if (facetSlug === "study-area") {
+        if(facetSlug === "study-area"){
           b.add(
             '      <div tabindex="0"' +
             ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
@@ -569,29 +468,24 @@ var FeaturedFilters = (function () {
             '>'
           );
         }
-
         b.add('        <label class="pointer d-block">');
-        b.add(
-          '          <input type="checkbox"' +
-          ' name="' + Html.esc(pair.name) + '"' +
-          ' value="' + Html.esc(pair.value) + '"' + checkedAttr +
-          '>'
-        );
-        b.add('          <span>' + Html.esc(formatFacetLabel(label, facetName)) + '</span>');
+        //b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(label) + '"' + checkedAttr + '>');\
+        b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(__valTok) + '"' + checkedAttr + '>');
+        b.add('          <span>' + Html.esc(titleCaseLabel(label)) + '</span>');
         b.add('        </label>');
         b.add('      </div>');
       } else {
-        // SINGLE - clickable rows (unchanged, but keep pair values and toggle as data)
+        // SINGLE - clickable rows
         b.add(
           '      <div tabindex="0"' +
           ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
           ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
           ' data-param-name="' + Html.esc(pair.name) + '"' +
-          ' data-param-value="' + Html.esc(pair.value) + '"' +
+          ' data-param-value="' + Html.esc(__valTok) + '"' +
           ' data-toggleurl="' + Html.esc(toggle) + '"' +
           '>'
         );
-        b.add('        ' + Html.esc(formatFacetLabel(label, facetName)));
+        b.add('        ' + Html.esc(titleCaseLabel(label)));
         b.add('      </div>');
       }
     }
@@ -599,6 +493,7 @@ var FeaturedFilters = (function () {
     if(facetSlug === "study-area" && values.length > 14) {
         b.add('</div>');
     }
+
 
     if (isMulti) {
       b.add('      <section class="search-filter-buttons flex-shrink-0 col-12">');
@@ -636,9 +531,9 @@ var FeaturedFilters = (function () {
 })();
 
 
+
 /* === render/header-row.js === */
 var HeaderRow = (function () {
-
   function featured(sd, G) {
     if (G && G.hideFacets) return "";
 
@@ -654,32 +549,30 @@ var HeaderRow = (function () {
 
   function selected(sd) {
     var chips = [];
-
     for (var i = 0; i < sd.facets.length; i++) {
       var facet = sd.facets[i];
       var vals = facet.allValues || [];
       for (var j = 0; j < vals.length; j++) {
         var v = vals[j];
         if (!v || !v.selected) continue;
-
         var label = v.label || "";
         var ld = (facet.labels && facet.labels[label]) || {};
-        var queryParam = ld && ld.queryParam ? String(ld.queryParam) : "";
-        var toggleUrl  = (ld && ld.toggleUrl) || v.toggleUrl || "";
+        var qsp = ld.queryParam || ""; // e.g. "f.Location|campus=Brisbane"
+        var name = "", value = "";
+        if (qsp) {
+          var eq = qsp.indexOf("=");
+          if (eq > -1) {
+            name  = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+            value = qsp.slice(eq + 1); // keep token as-is
+          }
+        }
+        // fallback if queryParam missing
+        if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+        if (!value) value = encodeURIComponent((v.data != null && v.data !== "") ? v.data : label).replace(/%20/g, "+");
 
-        var pair = findFacetPair(facet.name, label, v.data, toggleUrl, queryParam);
-        if (!pair.name || !pair.value) continue;
-
-        chips.push({
-          label: label,
-          name: pair.name,
-          value: pair.value,
-          facetName: facet.name,
-          dbg: { source: pair.source, toggleUrl: toggleUrl, queryParam: queryParam, chosenName: pair.name, chosenValue: pair.value }
-        });
+        chips.push({ label: label, name: name, value: value });
       }
     }
-
     if (!chips.length) return "";
 
     var b = Html.buffer();
@@ -689,15 +582,8 @@ var HeaderRow = (function () {
       b.add(
         '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
         ' data-remove-name="' + Html.esca(c.name) + '"' +
-        ' data-remove-value="' + Html.esca(c.value) + '"' +
-        // SSJS-visible debug
-        ' data-dbg-source="' + Html.esca(c.dbg.source) + '"' +
-        ' data-dbg-toggle="' + Html.esca(c.dbg.toggleUrl) + '"' +
-        ' data-dbg-qsp="' + Html.esca(c.dbg.queryParam) + '"' +
-        ' data-dbg-final-name="' + Html.esca(c.dbg.chosenName) + '"' +
-        ' data-dbg-final-value="' + Html.esca(c.dbg.chosenValue) + '"' +
-        '>' +
-        Html.esc(formatFacetLabel(c.label, c.facetName)) +
+        ' data-remove-value="' + Html.esca(c.value) + '">' +
+        Html.esc(titleCaseLabel(c.label)) +
         '</span>'
       );
     }
@@ -719,6 +605,19 @@ var FiltersModal = (function () {
     return String(n).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   }
 
+  // local helper to match the encoding used in URLs: spaces -> '+'
+  function encodeForParam(val) {
+    return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
+  }
+
+function valueTokenForFacet(facetName, data, label) {
+  var name = String(facetName || "");
+  if (name.toLowerCase() === "student type") {
+    return encodeForParam(data != null && data !== "" ? data : label);
+  }
+  return encodeForParam(label);
+}
+
   function section(facet) {
     var id = idFromName(facet.name);
     var b = Html.buffer();
@@ -737,22 +636,44 @@ var FiltersModal = (function () {
       var label = v.label || "";
       if (!label) continue;
 
-      // Preferred strict derivation, identical to FeaturedFilters
+      // Prefer the precomputed queryParam (built using v.data when present)
       var ld = (facet.labels && facet.labels[label]) || {};
-      var toggleUrl = (ld && ld.toggleUrl) || v.toggleUrl || "";
-      var queryParam = (ld && ld.queryParam) || v.queryParam || "";
+      var qsp = ld.queryParam || "";
 
-      var pair = findFacetPair(facet.name, label, v.data, toggleUrl, queryParam);
-      if (!pair.name || !pair.value) continue;
+      // Parse name and value from queryParam if available
+      var pName = "";
+      var pValEncoded = "";
+
+      if (qsp) {
+        var eq = qsp.indexOf("=");
+        if (eq > -1) {
+          // LHS: decode '+' to space and %7C to '|'
+          pName = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+          // RHS: keep encoded token as-is so it round-trips correctly
+          pValEncoded = qsp.slice(eq + 1);
+        }
+      }
+
+      // Fallbacks if labels[...].queryParam is missing:
+      if (!pName) {
+        // Try to infer a param name from the facet itself (same logic as elsewhere)
+        // Use an explicit facet.paramName if you add one upstream, otherwise default to a namespaced guess.
+        pName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+      }
+      if (!pValEncoded) {
+        // Submit the machine value when present, otherwise the label
+        var submitVal = (v.data != null && v.data !== "") ? v.data : label;
+        pValEncoded = encodeForParam(submitVal);
+      }
 
       var checked = v.selected ? ' checked="checked"' : "";
 
       // Use label for display, value token for submission
       b.add('<div class="p-b-075">');
       b.add('<label class="flex align-start gap-050-column pointer select-label-text">');
-      b.add('<input type="checkbox" name="' + Html.esca(pair.name) + '" value="' + Html.esca(pair.value) + '"' + checked + '>');
+      b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
       b.add('<div class="js-fbsearch-filters-modal--label-text" data-filter-name="' + Html.esca(label) + '">');
-      b.add('<div class="f-semibold">' + Html.esc(formatFacetLabel(label, facet.name)) + '</div>');
+      b.add('<div class="f-semibold">' + Html.esc(titleCaseLabel(label)) + '</div>');
       b.add('</div>');
       b.add('</label>');
       b.add('</div>');
