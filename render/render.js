@@ -89,57 +89,90 @@ function parseAllFParams(urlOrQs) {
   return out;
 }
 
-// Robustly pick the correct name/value for a specific facet value from its toggleUrl (preferred) or queryParam.
-// Assumptions per Aleks: toggleUrl or queryParam will always be present.
-// Strategy:
-// 1) From toggleUrl, among all f.* pairs, prefer ones whose LHS starts with "f.{facetName}" (case-sensitive match) AND whose RHS equals the exact token for label or v.data.
-// 2) If not found, still prefer LHS starting with "f.{facetName}" even if RHS doesn't match (last occurrence wins).
-// 3) If toggleUrl gave nothing usable, fall back to queryParam (already a single pair for this value).
-// 4) If still nothing, skip rendering the option (caller decides).
-function findFacetPair(facetName, label, dataValue, toggleUrl, queryParam) {
-  var expectedPrefix = "f." + String(facetName);
-  var labelTok = encodeForParam(label);
-  var dataTok  = (dataValue != null && dataValue !== "") ? encodeForParam(dataValue) : null;
-
-  // 1) Try toggleUrl
-  if (toggleUrl) {
-    var all = parseAllFParams(toggleUrl);
-
-    // A: exact LHS prefix + exact RHS match (label first, then data)
-    for (var i = all.length - 1; i >= 0; i--) {
-      if (all[i].name.indexOf(expectedPrefix) === 0 && all[i].value === labelTok) {
-        return { name: all[i].name, value: all[i].value, source: "toggleUrl:lhs+label" };
-      }
+// Prefer toggleUrl; if the exact pair for THIS value isn't present in toggleUrl
+// (common when the value is already selected and toggleUrl is a "remove" link),
+// fall back to the exact queryParam pair.
+function findFacetPair(facetName, label, data, toggleUrl, queryParam) {
+  function encToken(s){ return encodeURIComponent(String(s == null ? "" : s)).replace(/%20/g, "+"); }
+  function parseAllF(urlOrQs) {
+    var out = [];
+    if (!urlOrQs) return out;
+    var q = String(urlOrQs);
+    var qi = q.indexOf("?");
+    if (qi >= 0) q = q.slice(qi + 1);
+    if (!q) return out;
+    var parts = q.split("&");
+    for (var i = 0; i < parts.length; i++) {
+      var seg = parts[i];
+      if (!seg) continue;
+      var eq = seg.indexOf("=");
+      if (eq < 0) continue;
+      var rawName = seg.slice(0, eq);
+      var rhs = seg.slice(eq + 1); // keep encoded
+      var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
+      if (name.indexOf("f.") === 0) out.push({ name: name, value: rhs, raw: seg });
     }
-    if (dataTok) {
-      for (var j = all.length - 1; j >= 0; j--) {
-        if (all[j].name.indexOf(expectedPrefix) === 0 && all[j].value === dataTok) {
-          return { name: all[j].name, value: all[j].value, source: "toggleUrl:lhs+data" };
-        }
-      }
-    }
+    return out;
+  }
+  function parseQsp(qsp){
+    var i = (qsp || "").indexOf("=");
+    if (i < 0) return { name:"", value:"" };
+    return {
+      name: decodeURIComponent(qsp.slice(0,i).replace(/\+/g," ").replace(/%7C/gi,"|")),
+      value: qsp.slice(i+1) // keep encoded
+    };
+  }
 
-    // B: fallback to any pair for this facet name (take the last one)
-    for (var k = all.length - 1; k >= 0; k--) {
-      if (all[k].name.indexOf(expectedPrefix) === 0) {
-        return { name: all[k].name, value: all[k].value, source: "toggleUrl:lhsOnly" };
+  var labelToken = encToken(label);
+  var dataToken  = (data != null && data !== "") ? encToken(data) : "";
+  var want = [];
+  if (dataToken) want.push(dataToken);
+  want.push(labelToken);
+
+  // 1) Try to find THIS pair inside toggleUrl
+  var pairs = parseAllF(toggleUrl || "");
+
+  // 1a) exact LHS + exact RHS match (prefer data, then label)
+  for (var t = 0; t < want.length; t++) {
+    var tok = want[t];
+    for (var i = pairs.length - 1; i >= 0; i--) {
+      if (pairs[i].value === tok) {
+        // If there’s only one LHS candidate for this facet base, accept;
+        // otherwise accept any - we only care the RHS matches our value.
+        return { name: pairs[i].name, value: pairs[i].value, source: "toggleUrl:rhsExact" };
       }
     }
   }
 
-  // 2) queryParam - single pair like "f.Study level|undergraduate=undergraduate"
+  // 1b) single f.* pair present - accept it
+  if (pairs.length === 1) {
+    return { name: pairs[0].name, value: pairs[0].value, source: "toggleUrl:single" };
+  }
+
+  // 1c) prefer LHS that matches this facet base if present
+  var facetBase = "f." + String(facetName || "");
+  for (var k = pairs.length - 1; k >= 0; k--) {
+    var base = pairs[k].name.split("|")[0];
+    if (base === facetBase) {
+      return { name: pairs[k].name, value: pairs[k].value, source: "toggleUrl:lhsHint" };
+    }
+  }
+
+  // 2) Fall back to the exact queryParam pair for THIS value
   if (queryParam) {
-    var eq = queryParam.indexOf("=");
-    if (eq > -1) {
-      var nm = decodeURIComponent(queryParam.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-      var val = queryParam.slice(eq + 1);
-      return { name: nm, value: val, source: "queryParam" };
+    var q = parseQsp(queryParam);
+    if (q.name && q.value) {
+      // only accept if RHS equals our label/data token (guards against stale pairs)
+      if (q.value === labelToken || (dataToken && q.value === dataToken)) {
+        return { name: q.name, value: q.value, source: "queryParam:rhsExact" };
+      }
     }
   }
 
-  // 3) Nothing usable
+  // Nothing usable
   return { name: "", value: "", source: "none" };
 }
+
 
 /* === render/results.js === */
 var Results = (function () {
