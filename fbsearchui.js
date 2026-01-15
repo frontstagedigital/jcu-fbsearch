@@ -265,7 +265,7 @@
             safeSubmit(form);
         }, true);
 
-        // Featured multiselect - Apply button scoped to the open multiselect panel
+        // Featured multiselect - Apply button: rebuild ALL f.* from all checked boxes
         document.addEventListener("click", function (e) {
             var btn = e.target && e.target.closest('.multiselect button#filters-apply, .multiselect [data-featured-apply]');
             if (!btn) return;
@@ -273,30 +273,33 @@
             e.stopPropagation();
             e.preventDefault();
 
-            var wrapper = btn.closest('.multiselect');
-            if (!wrapper) return;
+            var form = document.querySelector(formSelector);
+            if (!form) return;
 
-            // Start from current URL
-            //applyQueryToForm(form, window.location.search);
+            // 1) Start from current URL but WITHOUT any f.* mirrors 
             seedFromUrlSmart(form, window.location.search);
 
-            // Collect all checked boxes in THIS featured multiselect only
-            var checks = wrapper.querySelectorAll('input[type="checkbox"]:checked');
+            // 2) Remove all f.* hidden fields so not to carry stale facet values
+            clearHiddenByPrefix(form, clearHiddenNamePrefix); // usually "f."
 
-            // Remove previous mirrors only for names present in this wrapper
-            var namesToClear = uniqueNamesFromNodeList(wrapper.querySelectorAll('input[type="checkbox"]'));
-            for (var c = 0; c < namesToClear.length; c++) removeParamPair(form, namesToClear[c], null);
+            // 3) Collect ALL checked facet checkboxes across the page:
+            //    - featured facet panels
+            //    - modal (in case it’s open and has checks)
+            var allChecked = document.querySelectorAll(
+                '.multiselect input[type="checkbox"]:checked, ' + modalRootSelector + ' input[type="checkbox"]:checked'
+            );
 
-            // Mirror all checked boxes
-            for (var i = 0; i < checks.length; i++) {
-                var cb = checks[i];
+            // 4) Mirror them into hidden fields (preserve spaces, the browser will encode on submit)
+            for (var i = 0; i < allChecked.length; i++) {
+                var cb = allChecked[i];
                 if (!cb.name) continue;
                 appendHidden(form, cb.name, normalisePlusToSpace(cb.value || ""));
             }
 
-            // Submit
+            // 5) Submit 
             safeSubmit(form);
         }, true);
+
 
         // Featured multiselect - Cancel button closes the dropdown and resets styles
         document.addEventListener("click", function (e) {
