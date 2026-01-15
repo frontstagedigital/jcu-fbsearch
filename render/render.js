@@ -415,6 +415,16 @@ var FeaturedFilters = (function () {
       .replace(/(^-|-$)/g, "");
   }
 
+  function splitQsp(qsp) {
+    if (!qsp || typeof qsp !== "string") return { name: "", value: "" };
+    var i = qsp.indexOf("=");
+    if (i < 0) return { name: "", value: "" };
+    var rawName = qsp.slice(0, i);
+    var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/g, "|"));
+    var value = qsp.slice(i + 1);
+    return { name: name, value: value };
+  }
+
   // UPDATED: adds checked="checked" when v.selected is true
   function block(facet) {
     var facetName = facet.name;
@@ -442,8 +452,8 @@ var FeaturedFilters = (function () {
 
     var values = facet.allValues || [];
 
-    if (facetSlug === "study-area" && values.length > 14) {
-      b.add('<div class="m-100 overflow_y-auto overflow_x-h" style="max-height:500px;">');
+    if(facetSlug === "study-area" && values.length > 14) {
+        b.add('<div class="m-100 overflow_y-auto overflow_x-h" style="max-height:500px;">');
     }
 
     for (var i = 0; i < values.length; i++) {
@@ -451,13 +461,16 @@ var FeaturedFilters = (function () {
       if (!v || !v.label) continue;
 
       var label = v.label;
-      var submitName = (facet.paramName && String(facet.paramName)) || ("f." + facetName);
-      var submitValue = valueTokenForFacet(facetName, v.data, label);
+      var ld = (facet.labels && facet.labels[label]) || {};
+      var qsp = ld.queryParam || "";
+      var toggle = ld.toggleUrl || "";
+      var pair = splitQsp(qsp); // { name, value } (value ignored by build)
+      var __valTok = valueTokenForFacet(facetName, v.data, label);
       var checkedAttr = v.selected ? ' checked="checked"' : '';
 
       if (isMulti) {
         // MULTI - checkboxes
-        if (facetSlug === "study-area") {
+        if(facetSlug === "study-area"){
           b.add(
             '      <div tabindex="0"' +
             ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
@@ -473,7 +486,8 @@ var FeaturedFilters = (function () {
           );
         }
         b.add('        <label class="pointer d-block">');
-        b.add('          <input type="checkbox" name="' + Html.esc(submitName) + '" value="' + Html.esc(submitValue) + '"' + checkedAttr + '>');
+        //b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(label) + '"' + checkedAttr + '>');\
+        b.add('          <input type="checkbox" name="' + Html.esc(pair.name) + '" value="' + Html.esc(__valTok) + '"' + checkedAttr + '>');
         b.add('          <span>' + Html.esc(titleCaseLabel(label)) + '</span>');
         b.add('        </label>');
         b.add('      </div>');
@@ -483,8 +497,9 @@ var FeaturedFilters = (function () {
           '      <div tabindex="0"' +
           ' data-' + facetSlug + '="' + Html.esc(slug(label)) + '"' +
           ' class="p-t-100 p-b-100 p-l-075 p-r-075 select-label-text f-bold"' +
-          ' data-param-name="' + Html.esc(submitName) + '"' +
-          ' data-param-value="' + Html.esc(submitValue) + '"' +
+          ' data-param-name="' + Html.esc(pair.name) + '"' +
+          ' data-param-value="' + Html.esc(__valTok) + '"' +
+          ' data-toggleurl="' + Html.esc(toggle) + '"' +
           '>'
         );
         b.add('        ' + Html.esc(titleCaseLabel(label)));
@@ -492,9 +507,10 @@ var FeaturedFilters = (function () {
       }
     }
 
-    if (facetSlug === "study-area" && values.length > 14) {
-      b.add('</div>');
+    if(facetSlug === "study-area" && values.length > 14) {
+        b.add('</div>');
     }
+
 
     if (isMulti) {
       b.add('      <section class="search-filter-buttons flex-shrink-0 col-12">');
@@ -532,6 +548,7 @@ var FeaturedFilters = (function () {
 })();
 
 
+
 /* === render/header-row.js === */
 var HeaderRow = (function () {
   function featured(sd, G) {
@@ -547,19 +564,30 @@ var HeaderRow = (function () {
     return b.toString();
   }
 
-  // Selected chips - build purely from facet name + label/data, no toggleUrl/queryParam
   function selected(sd) {
     var chips = [];
     for (var i = 0; i < sd.facets.length; i++) {
       var facet = sd.facets[i];
-      var paramName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
       var vals = facet.allValues || [];
       for (var j = 0; j < vals.length; j++) {
         var v = vals[j];
         if (!v || !v.selected) continue;
         var label = v.label || "";
-        var value = valueTokenForFacet(facet.name, v.data, label);
-        chips.push({ label: label, name: paramName, value: value, facetName: facet.name });
+        var ld = (facet.labels && facet.labels[label]) || {};
+        var qsp = ld.queryParam || ""; // e.g. "f.Location|campus=Brisbane"
+        var name = "", value = "";
+        if (qsp) {
+          var eq = qsp.indexOf("=");
+          if (eq > -1) {
+            name  = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+            value = qsp.slice(eq + 1); // keep token as-is
+          }
+        }
+        // fallback if queryParam missing
+        if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+        if (!value) value = encodeURIComponent((v.data != null && v.data !== "") ? v.data : label).replace(/%20/g, "+");
+
+        chips.push({ label: label, name: name, value: value });
       }
     }
     if (!chips.length) return "";
@@ -571,8 +599,7 @@ var HeaderRow = (function () {
       b.add(
         '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
         ' data-remove-name="' + Html.esca(c.name) + '"' +
-        ' data-remove-value="' + Html.esca(c.value) + '"' +
-        '>' +
+        ' data-remove-value="' + Html.esca(c.value) + '">' +
         Html.esc(titleCaseLabel(c.label)) +
         '</span>'
       );
@@ -591,9 +618,6 @@ var HeaderRow = (function () {
 
 /* === render/filters-modal.js === */
 var FiltersModal = (function () {
-  function idFromName(n) {
-    return String(n).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  }
 
   function section(facet) {
     var id = idFromName(facet.name);
@@ -613,11 +637,39 @@ var FiltersModal = (function () {
       var label = v.label || "";
       if (!label) continue;
 
-      // unified - never use toggleUrl or queryParam
-      var pName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
-      var pValEncoded = valueTokenForFacet(facet.name, v.data, label);
-      var checked = v.selected ? ' checked="checked"' : '';
+      // Prefer the precomputed queryParam (built using v.data when present)
+      var ld = (facet.labels && facet.labels[label]) || {};
+      var qsp = ld.queryParam || "";
 
+      // Parse name and value from queryParam if available
+      var pName = "";
+      var pValEncoded = "";
+
+      if (qsp) {
+        var eq = qsp.indexOf("=");
+        if (eq > -1) {
+          // LHS: decode '+' to space and %7C to '|'
+          pName = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
+          // RHS: keep encoded token as-is so it round-trips correctly
+          pValEncoded = qsp.slice(eq + 1);
+        }
+      }
+
+      // Fallbacks if labels[...].queryParam is missing:
+      if (!pName) {
+        // Try to infer a param name from the facet itself (same logic as elsewhere)
+        // Use an explicit facet.paramName if you add one upstream, otherwise default to a namespaced guess.
+        pName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+      }
+      if (!pValEncoded) {
+        // Submit the machine value when present, otherwise the label
+        var submitVal = (v.data != null && v.data !== "") ? v.data : label;
+        pValEncoded = encodeForParam(submitVal);
+      }
+
+      var checked = v.selected ? ' checked="checked"' : "";
+
+      // Use label for display, value token for submission
       b.add('<div class="p-b-075">');
       b.add('<label class="flex align-start gap-050-column pointer select-label-text">');
       b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
@@ -626,6 +678,7 @@ var FiltersModal = (function () {
       b.add('</div>');
       b.add('</label>');
       b.add('</div>');
+
     }
 
     b.add('</div></div>');
