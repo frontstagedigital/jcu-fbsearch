@@ -636,11 +636,8 @@ var HeaderRow = (function () {
   function parseNameValueFromToggleUrl(url) {
     var res = { name: "", value: "" };
     if (!url || typeof url !== "string") return res;
-
-    // allow full URLs or just "?a=b&c=d"
     var qStart = url.indexOf("?");
     var q = qStart >= 0 ? url.slice(qStart + 1) : url;
-
     if (!q) return res;
     var parts = q.split("&");
     for (var i = parts.length - 1; i >= 0; i--) {
@@ -648,21 +645,17 @@ var HeaderRow = (function () {
       if (!seg) continue;
       var eq = seg.indexOf("=");
       if (eq < 0) continue;
-
       var rawName = seg.slice(0, eq);
-      // decode '+' to space and %7C to '|'
       var name = decodeURIComponent(rawName.replace(/\+/g, " ").replace(/%7C/gi, "|"));
-
       if (name.indexOf("f.") === 0) {
-        res.name = name;           // keep as decoded
-        res.value = seg.slice(eq + 1); // keep RHS encoded verbatim (eg "pathways+and+bridging+programs")
+        res.name = name;                 // decoded LHS
+        res.value = seg.slice(eq + 1);   // keep RHS encoded verbatim
         return res;
       }
     }
     return res;
   }
 
-  // Build selected chips - prefer toggleUrl; add SSJS debug attrs
   function selected(sd) {
     var chips = [];
 
@@ -682,33 +675,48 @@ var HeaderRow = (function () {
           value: "",
           source: "fallback",
           toggleUrl: (ld && ld.toggleUrl) || v.toggleUrl || "",
-          queryParam: ld && ld.queryParam || ""
+          queryParam: (ld && ld.queryParam) || ""
         };
 
-        // 1) Prefer toggleUrl if present
+        // 1) Prefer toggleUrl if it contains the f.* pair
         if (chosen.toggleUrl) {
           var t = parseNameValueFromToggleUrl(chosen.toggleUrl);
           if (t.name)  { chosen.name  = t.name;  chosen.source = "toggleUrl"; }
           if (t.value) { chosen.value = t.value; chosen.source = "toggleUrl"; }
         }
 
-        // 2) If still missing, use queryParam (encoded RHS)
+        // 2) Fall back to queryParam if needed (RHS stays encoded)
         if ((!chosen.name || !chosen.value) && chosen.queryParam) {
           var qp = chosen.queryParam;
           var eq = qp.indexOf("=");
           if (eq > -1) {
             if (!chosen.name)  chosen.name  = decodeURIComponent(qp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-            if (!chosen.value) chosen.value = qp.slice(eq + 1); // keep encoded
+            if (!chosen.value) chosen.value = qp.slice(eq + 1);
             if (chosen.source !== "toggleUrl") chosen.source = "queryParam";
           }
         }
 
-        // 3) Fallbacks
-        if (!chosen.name)  chosen.name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+        // 3) Final fallbacks (data or label)
+        if (!chosen.name) {
+          chosen.name = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
+        }
         if (!chosen.value) {
           var submitVal = (v.data != null && v.data !== "") ? v.data : label;
           chosen.value = encodeForParam(submitVal);
           if (chosen.source === "fallback") chosen.source = "fallback:dataOrLabel";
+        }
+
+        // 4) Label override if queryParam/data collapsed the value (eg "pathways")
+        //    We only switch if the label token differs and is richer (contains '+').
+        var labelToken = encodeForParam(label);
+        if (
+          chosen.source !== "toggleUrl" &&      // we didn't already get a good token
+          labelToken &&                         // label exists
+          labelToken !== chosen.value &&        // different from current value ("pathways")
+          labelToken.indexOf("+") > -1          // richer token like "pathways+and+bridging+programs"
+        ) {
+          chosen.value  = labelToken;
+          chosen.source = chosen.source + "+labelOverride";
         }
 
         chips.push({
@@ -725,14 +733,13 @@ var HeaderRow = (function () {
 
     var b = Html.buffer();
     b.add('<div id="selected-filters" class="columns flex-nowrap align-center gap-050-column">');
-
     for (var k = 0; k < chips.length; k++) {
       var c = chips[k];
       b.add(
         '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
           ' data-remove-name="' + Html.esca(c.name) + '"' +
           ' data-remove-value="' + Html.esca(c.value) + '"' +
-          // SSJS-visible debug attributes so you can inspect in HTML
+          // SSJS-visible debug:
           ' data-dbg-source="' + Html.esca(c.dbg.source) + '"' +
           ' data-dbg-toggle="' + Html.esca(c.dbg.toggleUrl) + '"' +
           ' data-dbg-qsp="' + Html.esca(c.dbg.queryParam) + '"' +
@@ -743,11 +750,11 @@ var HeaderRow = (function () {
         '</span>'
       );
     }
-
     b.add('<span class="f-underline pointer">Clear all</span>');
     b.add('</div>');
     return b.toString();
   }
+
 
   return {
     featured: featured,
