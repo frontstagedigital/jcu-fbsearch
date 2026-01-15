@@ -265,7 +265,7 @@
             safeSubmit(form);
         }, true);
 
-        // Featured multiselect - Apply button: rebuild ALL f.* from all checked boxes
+        // Featured multiselect - Apply button: rebuild f.* from UI, dedup, don't seed f.* from URL
         document.addEventListener("click", function (e) {
             var btn = e.target && e.target.closest('.multiselect button#filters-apply, .multiselect [data-featured-apply]');
             if (!btn) return;
@@ -276,29 +276,35 @@
             var form = document.querySelector(formSelector);
             if (!form) return;
 
-            // 1) Start from current URL but WITHOUT any f.* mirrors 
+            // 1) Seed NON-facet params from the current URL
+            //    (seed everything, then immediately wipe any f.* that might have been added)
             seedFromUrlSmart(form, window.location.search);
+            clearHiddenByPrefix(form, clearHiddenNamePrefix); // remove any seeded f.*
 
-            // 2) Remove all f.* hidden fields so not to carry stale facet values
-            clearHiddenByPrefix(form, clearHiddenNamePrefix); // usually "f."
-
-            // 3) Collect ALL checked facet checkboxes across the page:
-            //    - featured facet panels
-            //    - modal (in case it’s open and has checks)
-            var allChecked = document.querySelectorAll(
+            // 2) Collect ALL checked facet checkboxes from featured + modal
+            var nodeList = document.querySelectorAll(
                 '.multiselect input[type="checkbox"]:checked, ' + modalRootSelector + ' input[type="checkbox"]:checked'
             );
 
-            // 4) Mirror them into hidden fields (preserve spaces, the browser will encode on submit)
-            for (var i = 0; i < allChecked.length; i++) {
-                var cb = allChecked[i];
-                if (!cb.name) continue;
-                appendHidden(form, cb.name, normalisePlusToSpace(cb.value || ""));
+            // 3) De-duplicate by name|value
+            var seen = Object.create(null);
+            for (var i = 0; i < nodeList.length; i++) {
+                var cb = nodeList[i];
+                var name = cb && cb.name ? String(cb.name) : "";
+                if (!name || name.indexOf(clearHiddenNamePrefix) !== 0) continue; // only f.* params
+
+                var value = normalisePlusToSpace(cb.value || "");
+                var key = name + "|" + value;
+
+                if (seen[key]) continue;
+                seen[key] = true;
+                appendHidden(form, name, value);
             }
 
-            // 5) Submit 
+            // 4) Submit
             safeSubmit(form);
         }, true);
+
 
 
         // Featured multiselect - Cancel button closes the dropdown and resets styles
