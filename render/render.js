@@ -639,25 +639,30 @@ var HeaderRow = (function () {
       for (var j = 0; j < vals.length; j++) {
         var v = vals[j];
         if (!v || !v.selected) continue;
+
         var label = v.label || "";
         var ld = (facet.labels && facet.labels[label]) || {};
-        var qsp = ld.queryParam || ""; // e.g. "f.Location|campus=Brisbane"
+
+        // 1) Start with queryParam if present
+        var qsp = ld.queryParam || "";
         var name = "", value = "";
         if (qsp) {
           var eq = qsp.indexOf("=");
           if (eq > -1) {
             name  = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
-            value = qsp.slice(eq + 1); // keep token as-is
+            value = qsp.slice(eq + 1); // keep RHS encoded
           }
         }
-        
-        if ((!name || !value) && (ld.toggleUrl || v.toggleUrl)) {
-          var t = splitQspFromToggleUrl(ld.toggleUrl || v.toggleUrl);
-          if (t.name) name = t.name;
-          if (t.value) value = t.value;
+
+        // 2) ALWAYS override with toggleUrl if available - it has the canonical encoded RHS
+        var tu = ld.toggleUrl || v.toggleUrl || "";
+        if (tu) {
+          var t = splitQspFromToggleUrl(tu);
+          if (t.name)  name  = t.name;
+          if (t.value) value = t.value;  // eg 'pathways+and+bridging+programs'
         }
 
-        // fallback if queryParam missing
+        // 3) Fallbacks
         if (!name)  name  = (facet.paramName && String(facet.paramName)) || ("f." + facet.name);
         if (!value) value = encodeURIComponent((v.data != null && v.data !== "") ? v.data : label).replace(/%20/g, "+");
 
