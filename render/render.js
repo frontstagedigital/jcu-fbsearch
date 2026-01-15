@@ -26,6 +26,23 @@ function titleCaseLabel(str) {
   return parts.join(" ");
 }
 
+  function idFromName(n) {
+    return String(n).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  }
+
+  // local helper to match the encoding used in URLs: spaces -> '+'
+  function encodeForParam(val) {
+    return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
+  }
+
+function valueTokenForFacet(facetName, data, label) {
+  var name = String(facetName || "");
+  if (name.toLowerCase() === "student type") {
+    return encodeForParam(data != null && data !== "" ? data : label);
+  }
+  return encodeForParam(label);
+}
+
 /* === render/results.js === */
 var Results = (function () {
   // -------- JCU helpers --------
@@ -601,22 +618,6 @@ var HeaderRow = (function () {
 
 /* === render/filters-modal.js === */
 var FiltersModal = (function () {
-  function idFromName(n) {
-    return String(n).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  }
-
-  // local helper to match the encoding used in URLs: spaces -> '+'
-  function encodeForParam(val) {
-    return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
-  }
-
-function valueTokenForFacet(facetName, data, label) {
-  var name = String(facetName || "");
-  if (name.toLowerCase() === "student type") {
-    return encodeForParam(data != null && data !== "" ? data : label);
-  }
-  return encodeForParam(label);
-}
 
   function section(facet) {
     var id = idFromName(facet.name);
