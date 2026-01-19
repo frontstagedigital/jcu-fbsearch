@@ -186,9 +186,9 @@
         }
     });
 
-    // 6) Sort/View option clicks in the countbar submit the search, preserving other params
+    // 6) Sort/View option selection inside the countbar
     document.addEventListener('click', function (e) {
-        var opt = e.target && e.target.closest('.js-fbsearch-countbar .select-label-text[data-param-name][data-param-value]');
+        var opt = e.target && e.target.closest('.js-fbsearch-countbar [data-param-name][data-param-value]');
         if (!opt) return;
 
         e.preventDefault();
@@ -196,7 +196,26 @@
         var pname = opt.getAttribute('data-param-name') || '';
         var pval = opt.getAttribute('data-param-value') || '';
 
-        // Build from current checked facets, then override the chosen param
+        var pairs = collectSelectedPairs();
+        var extras = {};
+        if (pname) extras[pname] = pval;
+
+        var qs = buildQueryString(pairs, extras);
+        var base = window.location.origin + window.location.pathname;
+        window.location.href = base + qs;
+    });
+
+    // 6a) Keyboard activate (Enter/Space) for accessibility
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var opt = e.target && e.target.closest('.js-fbsearch-countbar [data-param-name][data-param-value]');
+        if (!opt) return;
+
+        e.preventDefault();
+
+        var pname = opt.getAttribute('data-param-name') || '';
+        var pval = opt.getAttribute('data-param-value') || '';
+
         var pairs = collectSelectedPairs();
         var extras = {};
         if (pname) extras[pname] = pval;
