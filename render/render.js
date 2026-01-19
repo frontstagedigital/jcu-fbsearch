@@ -112,7 +112,7 @@ var CountBar = (function () {
         selectedText = optionsMap[firstKey(optionsMap, "")] || "";
       }
     }
-    b.add('<div class="no-select select-wrapper search-controls col-12 col-6-med col-2-lrg">');
+    b.add('<div class="no-select select-wrapper search-controls col-12 col-6-med col-2-lrg js-fbsearch-countbar-select" data-select-kind="' + Html.esc(kind) + '">');
     b.add('  <div class="select-label-text active-label-text flex space-between align-center plus-black btn sm secondary-one">');
     b.add('    <div class="f-display-4">');
     b.add('      <span class="p-l-025 p-r-025">' + Html.esc(kind) + ': </span> <span>' + Html.esc(selectedText) + '</span>');
