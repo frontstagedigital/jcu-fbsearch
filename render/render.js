@@ -565,7 +565,7 @@ var FeaturedFilters = (function () {
 
     // wrapper - add "multiselect" class only for checkbox facets
     b.add(
-      '<div class="' + (isMulti ? 'multiselect ' : 'singleselect') +
+      '<div class="' + (isMulti ? 'multiselect ' : 'singleselect ') +
       'no-select select-wrapper search-controls col-12 col-6-med col-2-lrg js-fbsearch-featured-facet" data-featured-facet="' +
       Html.esc(facetName) + '">'
     );
