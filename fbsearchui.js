@@ -186,33 +186,31 @@
         }
     });
 
-    // Sort/View option selection inside the countbar (simple with inline console.log)
+    // ===== Countbar: SORT handler =====
     document.addEventListener('click', function (e) {
-        var countbar = e.target && e.target.closest('.js-fbsearch-countbar');
-        if (!countbar) return;
+        var select = e.target && e.target.closest('.js-fbsearch-countbar-select[data-select-kind="Sort by"]');
+        if (!select) return;
 
-        var opt = e.target.closest('[data-param-name][data-param-value]');
-        if (!opt || !countbar.contains(opt)) return;
+        var opt = e.target && e.target.closest('[data-param-name="sort"][data-param-value]');
+        if (!opt || !select.contains(opt)) return;
 
-        console.log('[countbar click] target:', e.target, 'option:', opt);
+        console.log('[countbar:sort] click on option:', opt);
 
         e.preventDefault();
 
-        var pname = opt.getAttribute('data-param-name') || '';
+        var pname = 'sort';
         var pval = opt.getAttribute('data-param-value') || '';
 
-        console.log('[countbar click] param:', pname, 'value:', pval, 'node:', opt);
-
-        // collect current facet pairs
+        // collect currently-checked facet pairs
         var pairs = collectSelectedPairs();
-        console.log('[countbar click] current facet pairs:', pairs);
+        console.log('[countbar:sort] current facet pairs:', pairs);
 
-        // ensure only one entry for this param name
+        // remove any existing "sort" entry, then add the new one
         var filtered = [];
         var seen = Object.create ? Object.create(null) : {};
         for (var i = 0; i < pairs.length; i++) {
-            var n = pairs[i][0];
-            var v = pairs[i][1];
+            var n = pairs[i][0],
+                v = pairs[i][1];
             if (n === pname) continue;
             var key = n + '\u001F' + v;
             if (!seen[key]) {
@@ -221,41 +219,40 @@
             }
         }
         filtered.push([pname, pval]);
-        console.log('[countbar click] pairs + selected option:', filtered);
+
+        console.log('[countbar:sort] pairs + selected option:', filtered);
 
         var qs = buildQueryString(filtered);
         var base = window.location.origin + window.location.pathname;
         var finalUrl = base + qs;
 
-        console.log('[countbar click] navigate:', finalUrl);
+        console.log('[countbar:sort] navigate:', finalUrl);
         window.location.href = finalUrl;
-    }, false);
+    }, true); // capture to avoid other listeners swallowing the click
 
-    // Keyboard activate for accessibility (Enter/Space)
+    // Keyboard support for SORT (Enter/Space)
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter' && e.key !== ' ') return;
 
-        var countbar = e.target && e.target.closest('.js-fbsearch-countbar');
-        if (!countbar) return;
+        var select = e.target && e.target.closest('.js-fbsearch-countbar-select[data-select-kind="Sort by"]');
+        if (!select) return;
 
-        var opt = e.target.closest('[data-param-name][data-param-value]');
-        if (!opt || !countbar.contains(opt)) return;
+        var opt = e.target && e.target.closest('[data-param-name="sort"][data-param-value]');
+        if (!opt || !select.contains(opt)) return;
 
         e.preventDefault();
 
-        var pname = opt.getAttribute('data-param-name') || '';
+        var pname = 'sort';
         var pval = opt.getAttribute('data-param-value') || '';
 
-        console.log('[countbar keydown]', e.key, 'param:', pname, 'value:', pval, 'node:', opt);
+        console.log('[countbar:sort:key]', e.key, '->', pval);
 
         var pairs = collectSelectedPairs();
-        console.log('[countbar keydown] current facet pairs:', pairs);
-
         var filtered = [];
         var seen = Object.create ? Object.create(null) : {};
         for (var i = 0; i < pairs.length; i++) {
-            var n = pairs[i][0];
-            var v = pairs[i][1];
+            var n = pairs[i][0],
+                v = pairs[i][1];
             if (n === pname) continue;
             var key = n + '\u001F' + v;
             if (!seen[key]) {
@@ -264,15 +261,97 @@
             }
         }
         filtered.push([pname, pval]);
-        console.log('[countbar keydown] pairs + selected option:', filtered);
 
         var qs = buildQueryString(filtered);
         var base = window.location.origin + window.location.pathname;
         var finalUrl = base + qs;
 
-        console.log('[countbar keydown] navigate:', finalUrl);
+        console.log('[countbar:sort:key] navigate:', finalUrl);
         window.location.href = finalUrl;
-    }, false);
+    }, true);
+
+    // ===== Countbar: VIEW handler =====
+    document.addEventListener('click', function (e) {
+        var select = e.target && e.target.closest('.js-fbsearch-countbar-select[data-select-kind="View"]');
+        if (!select) return;
+
+        var opt = e.target && e.target.closest('[data-param-name="ui_view"][data-param-value]');
+        if (!opt || !select.contains(opt)) return;
+
+        console.log('[countbar:view] click on option:', opt);
+
+        e.preventDefault();
+
+        var pname = 'ui_view';
+        var pval = opt.getAttribute('data-param-value') || '';
+
+        var pairs = collectSelectedPairs();
+        console.log('[countbar:view] current facet pairs:', pairs);
+
+        // remove any existing "ui_view" entry, then add the new one
+        var filtered = [];
+        var seen = Object.create ? Object.create(null) : {};
+        for (var i = 0; i < pairs.length; i++) {
+            var n = pairs[i][0],
+                v = pairs[i][1];
+            if (n === pname) continue;
+            var key = n + '\u001F' + v;
+            if (!seen[key]) {
+                seen[key] = 1;
+                filtered.push(pairs[i]);
+            }
+        }
+        filtered.push([pname, pval]);
+
+        console.log('[countbar:view] pairs + selected option:', filtered);
+
+        var qs = buildQueryString(filtered);
+        var base = window.location.origin + window.location.pathname;
+        var finalUrl = base + qs;
+
+        console.log('[countbar:view] navigate:', finalUrl);
+        window.location.href = finalUrl;
+    }, true);
+
+    // Keyboard support for VIEW (Enter/Space)
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+
+        var select = e.target && e.target.closest('.js-fbsearch-countbar-select[data-select-kind="View"]');
+        if (!select) return;
+
+        var opt = e.target && e.target.closest('[data-param-name="ui_view"][data-param-value]');
+        if (!opt || !select.contains(opt)) return;
+
+        e.preventDefault();
+
+        var pname = 'ui_view';
+        var pval = opt.getAttribute('data-param-value') || '';
+
+        console.log('[countbar:view:key]', e.key, '->', pval);
+
+        var pairs = collectSelectedPairs();
+        var filtered = [];
+        var seen = Object.create ? Object.create(null) : {};
+        for (var i = 0; i < pairs.length; i++) {
+            var n = pairs[i][0],
+                v = pairs[i][1];
+            if (n === pname) continue;
+            var key = n + '\u001F' + v;
+            if (!seen[key]) {
+                seen[key] = 1;
+                filtered.push(pairs[i]);
+            }
+        }
+        filtered.push([pname, pval]);
+
+        var qs = buildQueryString(filtered);
+        var base = window.location.origin + window.location.pathname;
+        var finalUrl = base + qs;
+
+        console.log('[countbar:view:key] navigate:', finalUrl);
+        window.location.href = finalUrl;
+    }, true);
 
 
 
