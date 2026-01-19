@@ -163,7 +163,7 @@ var CountBar = (function () {
       (parsedQS[key]) ||
       firstKey(viewOptions, "default");
     var b = Html.buffer();
-    b.add('<div class="columns space-between align-center">');
+    b.add('<div class="columns space-between align-center js-fbsearch-countbar">');
     b.add('<div id="search-result-count" class="searchresults__count f-bold">');
     b.add('Showing <span id="search-page-start">' + currentStart + '</span> - <span id="search-page-end">' + currentEnd + '</span> of <span id="search-total-matching">' + total + '</span> results');
     b.add('</div>');
