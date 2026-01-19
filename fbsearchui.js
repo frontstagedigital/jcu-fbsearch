@@ -194,6 +194,8 @@
         var opt = e.target.closest('[data-param-name][data-param-value]');
         if (!opt || !countbar.contains(opt)) return;
 
+        console.log('[countbar click] target:', e.target, 'option:', opt);
+
         e.preventDefault();
 
         var pname = opt.getAttribute('data-param-name') || '';
