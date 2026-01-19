@@ -632,9 +632,7 @@ var FeaturedFilters = (function () {
           ' data-toggleurl="' + Html.esc(toggle) + '"' +
           '>'
         );
-        b.add('        <label class="pointer d-block">');
-        b.add('        <span>' + Html.esc(titleCaseLabel(label)) + '</span>');
-        b.add('        </label>');
+        b.add('        <span class="pointer d-block">' + Html.esc(titleCaseLabel(label)) + '</span>');
         b.add('      </div>');
       }
     }
