@@ -432,15 +432,15 @@
 
         // Featured facet - student type
         appendDescription(
-            ".js-fbsearch-featured-facet .study-level-wrapper div[data-student-type='domestic'] label",
+            ".js-fbsearch-featured-facet .study-level-wrapper div[data-student-type='domestic'] span",
             copy.studentTypeDomestic,
-            "p-l-150"
+            ""
         );
 
         appendDescription(
-            ".js-fbsearch-featured-facet .study-level-wrapper div[data-student-type='international'] label",
+            ".js-fbsearch-featured-facet .study-level-wrapper div[data-student-type='international'] span",
             copy.studentTypeInternational,
-            "p-l-150"
+            ""
         );
 
         // Featured facet - study level
