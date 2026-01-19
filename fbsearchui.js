@@ -186,44 +186,92 @@
         }
     });
 
-    // 6) Sort/View option selection inside the countbar
+    // Sort/View option selection inside the countbar (simple with inline console.log)
     document.addEventListener('click', function (e) {
-        var opt = e.target && e.target.closest('.js-fbsearch-countbar [data-param-name][data-param-value]');
-        if (!opt) return;
+        var countbar = e.target && e.target.closest('.js-fbsearch-countbar');
+        if (!countbar) return;
+
+        var opt = e.target.closest('[data-param-name][data-param-value]');
+        if (!opt || !countbar.contains(opt)) return;
 
         e.preventDefault();
 
         var pname = opt.getAttribute('data-param-name') || '';
         var pval = opt.getAttribute('data-param-value') || '';
 
+        console.log('[countbar click] param:', pname, 'value:', pval, 'node:', opt);
+
+        // collect current facet pairs
         var pairs = collectSelectedPairs();
-        var extras = {};
-        if (pname) extras[pname] = pval;
+        console.log('[countbar click] current facet pairs:', pairs);
 
-        var qs = buildQueryString(pairs, extras);
+        // ensure only one entry for this param name
+        var filtered = [];
+        var seen = Object.create ? Object.create(null) : {};
+        for (var i = 0; i < pairs.length; i++) {
+            var n = pairs[i][0];
+            var v = pairs[i][1];
+            if (n === pname) continue;
+            var key = n + '\u001F' + v;
+            if (!seen[key]) {
+                seen[key] = 1;
+                filtered.push(pairs[i]);
+            }
+        }
+        filtered.push([pname, pval]);
+        console.log('[countbar click] pairs + selected option:', filtered);
+
+        var qs = buildQueryString(filtered);
         var base = window.location.origin + window.location.pathname;
-        window.location.href = base + qs;
-    });
+        var finalUrl = base + qs;
 
-    // 6a) Keyboard activate (Enter/Space) for accessibility
+        console.log('[countbar click] navigate:', finalUrl);
+        window.location.href = finalUrl;
+    }, false);
+
+    // Keyboard activate for accessibility (Enter/Space)
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter' && e.key !== ' ') return;
-        var opt = e.target && e.target.closest('.js-fbsearch-countbar [data-param-name][data-param-value]');
-        if (!opt) return;
+
+        var countbar = e.target && e.target.closest('.js-fbsearch-countbar');
+        if (!countbar) return;
+
+        var opt = e.target.closest('[data-param-name][data-param-value]');
+        if (!opt || !countbar.contains(opt)) return;
 
         e.preventDefault();
 
         var pname = opt.getAttribute('data-param-name') || '';
         var pval = opt.getAttribute('data-param-value') || '';
 
-        var pairs = collectSelectedPairs();
-        var extras = {};
-        if (pname) extras[pname] = pval;
+        console.log('[countbar keydown]', e.key, 'param:', pname, 'value:', pval, 'node:', opt);
 
-        var qs = buildQueryString(pairs, extras);
+        var pairs = collectSelectedPairs();
+        console.log('[countbar keydown] current facet pairs:', pairs);
+
+        var filtered = [];
+        var seen = Object.create ? Object.create(null) : {};
+        for (var i = 0; i < pairs.length; i++) {
+            var n = pairs[i][0];
+            var v = pairs[i][1];
+            if (n === pname) continue;
+            var key = n + '\u001F' + v;
+            if (!seen[key]) {
+                seen[key] = 1;
+                filtered.push(pairs[i]);
+            }
+        }
+        filtered.push([pname, pval]);
+        console.log('[countbar keydown] pairs + selected option:', filtered);
+
+        var qs = buildQueryString(filtered);
         var base = window.location.origin + window.location.pathname;
-        window.location.href = base + qs;
-    });
+        var finalUrl = base + qs;
+
+        console.log('[countbar keydown] navigate:', finalUrl);
+        window.location.href = finalUrl;
+    }, false);
+
 
 
     document.addEventListener("DOMContentLoaded", function () {
