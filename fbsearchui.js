@@ -1,5 +1,4 @@
-/* FBSearchUI v2.6 sync duplicates across panels + persist sort/ui_view + countbar handlers */
-
+/* FBSearchUI v2.6 */
 (function () {
     function qsa(sel, root) {
         return Array.prototype.slice.call((root || document).querySelectorAll(sel));
@@ -78,7 +77,6 @@
         return params.length ? ("?" + params.join("&")) : "";
     }
 
-
     // Build a querystring preserving query/sort/ui_view EXCEPT a specific key we’re replacing
     function buildQueryStringPreservingExcept(pairs, exceptKey) {
         var params = [];
@@ -105,7 +103,6 @@
 
         return params.length ? ("?" + params.join("&")) : "";
     }
-
 
     // Build a querystring from current checked facet pairs + single-value extras (eg sort/ui_view)
     function buildQueryStringWithExtras(pairs, extras) {
@@ -156,6 +153,16 @@
     // Uncheck all matching inputs across DOM for a chip removal, then apply
     function uncheckAllByNameValue(name, value) {
         setAllByNameValue(name, value, false);
+    }
+
+    // --- helper for single-select facets (uncheck all for name, then check one and sync duplicates) ---
+    function selectSingleByNameValue(name, value) {
+        // uncheck all options for this facet
+        qsa('input[type="checkbox"][name="' + CSS.escape(name) + '"]').forEach(function (el) { el.checked = false; });
+        // check the chosen value (if present) and sync to duplicates
+        var chosen = document.querySelector('input[type="checkbox"][name="' + CSS.escape(name) + '"][value="' + CSS.escape(value) + '"]');
+        if (chosen) chosen.checked = true;
+        setAllByNameValue(name, value, true);
     }
 
     // ------ Event wiring ------
@@ -214,6 +221,48 @@
         }
     });
 
+    // ===== Featured + Modal: SINGLE-SELECT facet handlers =====
+    // Featured: .js-fbsearch-featured-facet.singleselect [data-param-name][data-param-value]
+    // Modal:    #filters-panel [role="button"][data-param-name][data-param-value]
+    function isCountbarTarget(el) {
+        return !!(el && el.closest('.js-fbsearch-countbar-select'));
+    }
+
+    function handleSingleSelectActivate(targetEl) {
+        var row = targetEl && (targetEl.closest('.js-fbsearch-featured-facet.singleselect [data-param-name][data-param-value]') ||
+                               targetEl.closest('#filters-panel [role="button"][data-param-name][data-param-value]'));
+        if (!row) return false;
+
+        var pname = row.getAttribute('data-param-name') || '';
+        var pval  = row.getAttribute('data-param-value') || '';
+        if (!pname) return false;
+
+        // reflect in DOM so UI stays consistent
+        selectSingleByNameValue(pname, pval);
+
+        // rebuild URL with preserved query/sort/ui_view
+        var pairs = collectSelectedPairs();
+        var qs    = buildQueryString(pairs);
+        var base  = window.location.origin + window.location.pathname;
+        window.location.href = base + qs;
+        return true;
+    }
+
+    document.addEventListener('click', function (e) {
+        if (isCountbarTarget(e.target)) return;
+        if (handleSingleSelectActivate(e.target)) {
+            e.preventDefault();
+        }
+    }, true);
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (isCountbarTarget(e.target)) return;
+        if (handleSingleSelectActivate(e.target)) {
+            e.preventDefault(); // stop Space scrolling
+        }
+    }, true);
+
     // ===== Countbar: SORT handler =====
     document.addEventListener('click', function (e) {
         var select = e.target && e.target.closest('.js-fbsearch-countbar-select[data-select-kind="Sort by"]');
@@ -222,7 +271,6 @@
         var opt = e.target && e.target.closest('[data-param-name="sort"][data-param-value]');
         if (!opt || !select.contains(opt)) return;
 
-        // console.debug('[countbar:sort] click', opt);
         e.preventDefault();
 
         var pname = 'sort';
@@ -249,7 +297,6 @@
         var base = window.location.origin + window.location.pathname;
         window.location.href = base + qs;
     }, true);
-
 
     // Keyboard support for SORT (Enter/Space)
     document.addEventListener('keydown', function (e) {
@@ -288,7 +335,6 @@
         window.location.href = base + qs;
     }, true);
 
-
     // ===== Countbar: VIEW handler =====
     document.addEventListener('click', function (e) {
         var select = e.target && e.target.closest('.js-fbsearch-countbar-select[data-select-kind="View"]');
@@ -297,7 +343,6 @@
         var opt = e.target && e.target.closest('[data-param-name="ui_view"][data-param-value]');
         if (!opt || !select.contains(opt)) return;
 
-        // console.debug('[countbar:view] click', opt);
         e.preventDefault();
 
         var pname = 'ui_view';
@@ -324,7 +369,6 @@
         var base = window.location.origin + window.location.pathname;
         window.location.href = base + qs;
     }, true);
-
 
     // Keyboard support for VIEW (Enter/Space)
     document.addEventListener('keydown', function (e) {
@@ -362,8 +406,6 @@
         var base = window.location.origin + window.location.pathname;
         window.location.href = base + qs;
     }, true);
-
-
 
     document.addEventListener("DOMContentLoaded", function () {
         // Text data
