@@ -30,30 +30,45 @@
     return out;
   }
 
-  // Turn pairs into query string, preserving query + sort + ui_view, and resetting pagination
-  function buildQueryString(pairs) {
-    var params = [];
+// Turn pairs into query string, preserving base fields like query/start_rank if present in current location
+function buildQueryString(pairs, extras) {
+  var params = [];
 
-    // keep "query", "sort", "ui_view" if present
-    var curr = new URL(window.location.href);
-    ['query','sort','ui_view'].forEach(function (k) {
-      var v = curr.searchParams.get(k);
-      if (v != null && v !== "") {
-        params.push(encodeURIComponent(k) + "=" + encodeURIComponent(v));
-      }
-    });
+  // keep key params from current URL (extras below can override)
+  var curr = new URL(window.location.href);
+  var keepKeys = ['query', 'sort', 'ui_view']; // <- keep sort + view too
+  var keepMap = Object.create ? Object.create(null) : {};
 
-    // add de-duped facet params
-    for (var i = 0; i < pairs.length; i++) {
-      var n = pairs[i][0];
-      var v = pairs[i][1];
-      var nEnc = encodeNameForUrl(n).replace(/%7C/gi, "%7C"); // keep '|' as %7C
-      // value is already '+'-tokenised
-      params.push(nEnc + "=" + v);
+  keepKeys.forEach(function (k) {
+    var v = curr.searchParams.get(k);
+    if (v != null && v !== "") {
+      keepMap[k] = v;
     }
+  });
 
-    return params.length ? ("?" + params.join("&")) : "";
+  // apply extras last to override any kept value
+  if (extras && typeof extras === 'object') {
+    for (var ek in extras) if (Object.prototype.hasOwnProperty.call(extras, ek)) {
+      keepMap[ek] = extras[ek];
+    }
   }
+
+  // push kept params first
+  for (var kk in keepMap) if (Object.prototype.hasOwnProperty.call(keepMap, kk)) {
+    params.push(encodeURIComponent(kk) + "=" + encodeURIComponent(keepMap[kk]));
+  }
+
+  // add de-duped facet params
+  for (var i = 0; i < pairs.length; i++) {
+    var n = pairs[i][0];
+    var v = pairs[i][1];
+    var nEnc = encodeNameForUrl(n).replace(/%7C/gi, "%7C"); // keep '|' encoded as %7C
+    params.push(nEnc + "=" + v); // value already tokenised with '+'
+  }
+
+  return params.length ? ("?" + params.join("&")) : "";
+}
+
 
   // Build a querystring from current checked facet pairs + single-value extras (eg sort/ui_view)
   function buildQueryStringWithExtras(pairs, extras) {
@@ -94,7 +109,7 @@
 
   function applyFilters() {
     var pairs = collectSelectedPairs();
-    var qs = buildQueryString(pairs);
+    var qs = buildQueryString(pairs); // extras optional
     var base = window.location.origin + window.location.pathname;
     window.location.href = base + qs;
   }
@@ -158,28 +173,26 @@
     }
   });
 
-  // 6) Countbar sort/view handlers
-  // Structure expected: wrapper .js-fbsearch-countbar containing click targets with:
-  //   data-param-name="sort"|"ui_view" and data-param-value="<value>"
-  document.addEventListener('click', function (e) {
-    var opt = e.target && e.target.closest('.js-fbsearch-countbar [data-param-name][data-param-value]');
-    if (!opt) return;
+// 6) Sort/View option clicks in the countbar submit the search, preserving other params
+document.addEventListener('click', function (e) {
+  var opt = e.target && e.target.closest('.js-fbsearch-countbar .select-label-text[data-param-name][data-param-value]');
+  if (!opt) return;
 
-    var name = opt.getAttribute('data-param-name') || '';
-    var value = opt.getAttribute('data-param-value') || '';
+  e.preventDefault();
 
-    // only handle single-valued params like sort/ui_view here
-    if (!name || (name !== 'sort' && name !== 'ui_view')) return;
+  var pname = opt.getAttribute('data-param-name') || '';
+  var pval  = opt.getAttribute('data-param-value') || '';
 
-    e.preventDefault();
-    var pairs = collectSelectedPairs();
-    var extras = {};
-    extras[name] = value; // override the clicked one
-    var qs = buildQueryStringWithExtras(pairs, extras);
-    var base = window.location.origin + window.location.pathname;
-    window.location.href = base + qs;
-  });
-})();
+  // Build from current checked facets, then override the chosen param
+  var pairs = collectSelectedPairs();
+  var extras = {};
+  if (pname) extras[pname] = pval;
+
+  var qs = buildQueryString(pairs, extras);
+  var base = window.location.origin + window.location.pathname;
+  window.location.href = base + qs;
+});
+
 
 document.addEventListener("DOMContentLoaded", function () {
   // Text data
