@@ -79,6 +79,34 @@
     }
 
 
+    // Build a querystring preserving query/sort/ui_view EXCEPT a specific key we’re replacing
+    function buildQueryStringPreservingExcept(pairs, exceptKey) {
+        var params = [];
+
+        var curr = new URL(window.location.href);
+        var keepKeys = ['query', 'sort', 'ui_view'].filter(function (k) {
+            return k !== exceptKey;
+        });
+
+        keepKeys.forEach(function (k) {
+            var v = curr.searchParams.get(k);
+            if (v != null && v !== "") {
+                params.push(encodeURIComponent(k) + "=" + encodeURIComponent(v));
+            }
+        });
+
+        // facet pairs
+        for (var i = 0; i < pairs.length; i++) {
+            var n = pairs[i][0];
+            var v = pairs[i][1];
+            var nEnc = encodeNameForUrl(n).replace(/%7C/gi, "%7C");
+            params.push(nEnc + "=" + v);
+        }
+
+        return params.length ? ("?" + params.join("&")) : "";
+    }
+
+
     // Build a querystring from current checked facet pairs + single-value extras (eg sort/ui_view)
     function buildQueryStringWithExtras(pairs, extras) {
         var params = [];
@@ -194,18 +222,15 @@
         var opt = e.target && e.target.closest('[data-param-name="sort"][data-param-value]');
         if (!opt || !select.contains(opt)) return;
 
-        console.log('[countbar:sort] click on option:', opt);
-
+        // console.debug('[countbar:sort] click', opt);
         e.preventDefault();
 
         var pname = 'sort';
         var pval = opt.getAttribute('data-param-value') || '';
 
-        // collect currently-checked facet pairs
         var pairs = collectSelectedPairs();
-        console.log('[countbar:sort] current facet pairs:', pairs);
 
-        // remove any existing "sort" entry, then add the new one
+        // remove existing sort entries from pairs, then add our choice
         var filtered = [];
         var seen = Object.create ? Object.create(null) : {};
         for (var i = 0; i < pairs.length; i++) {
@@ -220,15 +245,11 @@
         }
         filtered.push([pname, pval]);
 
-        console.log('[countbar:sort] pairs + selected option:', filtered);
-
-        var qs = buildQueryString(filtered);
+        var qs = buildQueryStringPreservingExcept(filtered, 'sort'); // don’t preserve old sort
         var base = window.location.origin + window.location.pathname;
-        var finalUrl = base + qs;
+        window.location.href = base + qs;
+    }, true);
 
-        console.log('[countbar:sort] navigate:', finalUrl);
-        window.location.href = finalUrl;
-    }, true); // capture to avoid other listeners swallowing the click
 
     // Keyboard support for SORT (Enter/Space)
     document.addEventListener('keydown', function (e) {
@@ -240,14 +261,14 @@
         var opt = e.target && e.target.closest('[data-param-name="sort"][data-param-value]');
         if (!opt || !select.contains(opt)) return;
 
-        e.preventDefault();
+        e.preventDefault(); // stop page scroll on Space
 
         var pname = 'sort';
         var pval = opt.getAttribute('data-param-value') || '';
 
-        console.log('[countbar:sort:key]', e.key, '->', pval);
-
         var pairs = collectSelectedPairs();
+
+        // remove existing sort entries from pairs, then add our choice
         var filtered = [];
         var seen = Object.create ? Object.create(null) : {};
         for (var i = 0; i < pairs.length; i++) {
@@ -262,13 +283,11 @@
         }
         filtered.push([pname, pval]);
 
-        var qs = buildQueryString(filtered);
+        var qs = buildQueryStringPreservingExcept(filtered, 'sort');
         var base = window.location.origin + window.location.pathname;
-        var finalUrl = base + qs;
-
-        console.log('[countbar:sort:key] navigate:', finalUrl);
-        window.location.href = finalUrl;
+        window.location.href = base + qs;
     }, true);
+
 
     // ===== Countbar: VIEW handler =====
     document.addEventListener('click', function (e) {
@@ -278,17 +297,15 @@
         var opt = e.target && e.target.closest('[data-param-name="ui_view"][data-param-value]');
         if (!opt || !select.contains(opt)) return;
 
-        console.log('[countbar:view] click on option:', opt);
-
+        // console.debug('[countbar:view] click', opt);
         e.preventDefault();
 
         var pname = 'ui_view';
         var pval = opt.getAttribute('data-param-value') || '';
 
         var pairs = collectSelectedPairs();
-        console.log('[countbar:view] current facet pairs:', pairs);
 
-        // remove any existing "ui_view" entry, then add the new one
+        // remove existing view entries from pairs, then add our choice
         var filtered = [];
         var seen = Object.create ? Object.create(null) : {};
         for (var i = 0; i < pairs.length; i++) {
@@ -303,15 +320,11 @@
         }
         filtered.push([pname, pval]);
 
-        console.log('[countbar:view] pairs + selected option:', filtered);
-
-        var qs = buildQueryString(filtered);
+        var qs = buildQueryStringPreservingExcept(filtered, 'ui_view'); // don’t preserve old ui_view
         var base = window.location.origin + window.location.pathname;
-        var finalUrl = base + qs;
-
-        console.log('[countbar:view] navigate:', finalUrl);
-        window.location.href = finalUrl;
+        window.location.href = base + qs;
     }, true);
+
 
     // Keyboard support for VIEW (Enter/Space)
     document.addEventListener('keydown', function (e) {
@@ -323,14 +336,14 @@
         var opt = e.target && e.target.closest('[data-param-name="ui_view"][data-param-value]');
         if (!opt || !select.contains(opt)) return;
 
-        e.preventDefault();
+        e.preventDefault(); // stop page scroll on Space
 
         var pname = 'ui_view';
         var pval = opt.getAttribute('data-param-value') || '';
 
-        console.log('[countbar:view:key]', e.key, '->', pval);
-
         var pairs = collectSelectedPairs();
+
+        // remove existing ui_view entries from pairs, then add our choice
         var filtered = [];
         var seen = Object.create ? Object.create(null) : {};
         for (var i = 0; i < pairs.length; i++) {
@@ -345,12 +358,9 @@
         }
         filtered.push([pname, pval]);
 
-        var qs = buildQueryString(filtered);
+        var qs = buildQueryStringPreservingExcept(filtered, 'ui_view');
         var base = window.location.origin + window.location.pathname;
-        var finalUrl = base + qs;
-
-        console.log('[countbar:view:key] navigate:', finalUrl);
-        window.location.href = finalUrl;
+        window.location.href = base + qs;
     }, true);
 
 
