@@ -1,5 +1,4 @@
-
-/* FBSearchUI v2.5 dedupe, unique handlers*/
+/* FBSearchUI v2.6 sync duplicates across panels */
 
 (function () {
   function qsa(sel, root) { return Array.prototype.slice.call((root||document).querySelectorAll(sel)); }
@@ -8,6 +7,12 @@
   // Encode name for URL: spaces -> '+', '|' -> '%7C' (via encodeURIComponent + fix spaces)
   function encodeNameForUrl(name) {
     return encodeURIComponent(String(name)).replace(/%20/g, "+");
+  }
+
+  // Propagate a checkbox state to all duplicates with same name+value (featured, modal, etc.)
+  function setAllByNameValue(name, value, checked) {
+    var sel = 'input[type="checkbox"][name="' + CSS.escape(name) + '"][value="' + CSS.escape(value) + '"]';
+    qsa(sel).forEach(function (el) { el.checked = checked; });
   }
 
   // Build a de-duplicated list of [name, value] for all checked checkboxes
@@ -39,11 +44,8 @@
       }
     });
 
-    // always reset pagination when applying filters
-    var startRank = curr.searchParams.get('start_rank');
-    if (startRank && startRank !== "" && startRank !== "1") {
-      // intentionally drop to reset to page 1
-    }
+    // always reset pagination when applying filters - drop start_rank if present
+    // (do nothing here intentionally - just don't carry it forward)
 
     // add de-duped facet params
     for (var i = 0; i < pairs.length; i++) {
@@ -66,21 +68,21 @@
 
   // Uncheck all matching inputs across DOM for a chip removal, then apply
   function uncheckAllByNameValue(name, value) {
-    qsa('input[type="checkbox"][name="' + CSS.escape(name) + '"][value="' + CSS.escape(value) + '"]').forEach(function (el) {
-      el.checked = false;
-    });
+    setAllByNameValue(name, value, false);
   }
 
-  // Event: modal Apply
-  document.addEventListener('click', function (e) {
+  // ------ Event wiring ------
+
+  // 1) Live-sync any checkbox change across duplicates with the same name+value
+  document.addEventListener('change', function (e) {
     var t = e.target;
-    if (t && t.id === 'filters-apply-modal') {
-      e.preventDefault();
-      applyFilters();
+    if (!t || !t.matches) return;
+    if (t.matches('input[type="checkbox"][name][value]')) {
+      setAllByNameValue(t.name, t.value, t.checked);
     }
   });
 
-  // Event: featured facet Apply buttons (class)
+  // 2) Featured facet "Apply" buttons (class)
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (!t) return;
@@ -90,7 +92,16 @@
     }
   });
 
-  // Event: chip removal
+  // 3) Modal "Apply" button (dedicated id)
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.id === 'filters-apply-modal') {
+      e.preventDefault();
+      applyFilters();
+    }
+  });
+
+  // 4) Chip removal - uncheck everywhere, then apply
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (!t) return;
@@ -104,7 +115,7 @@
     }
   });
 
-  // Optional: Clear all
+  // 5) Clear all
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (t && t.closest && t.closest('#selected-filters .f-underline.pointer')) {
