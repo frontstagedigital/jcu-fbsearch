@@ -633,7 +633,7 @@ var FeaturedFilters = (function () {
           '>'
         );
         b.add('        <label class="pointer d-block">');
-        b.add('        ' + Html.esc(titleCaseLabel(label)));
+        b.add('        <span>' + Html.esc(titleCaseLabel(label)) + '</span>');
         b.add('        </label>');
         b.add('      </div>');
       }
