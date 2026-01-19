@@ -428,7 +428,6 @@ document.addEventListener("DOMContentLoaded", function () {
   updateFormAction();
 });
 
-
 // Config for compare/save functionality with cookie
 var compareCookieName = "jcu_saved_courses";
 var compareCookieDomain = ".www.jcu.edu.au";
@@ -464,30 +463,18 @@ function getCookie(name) {
 function getSavedAssetIds() {
   var cookieValue = getCookie(compareCookieName);
   if (!cookieValue) return [];
-
-  // Try plain JSON
   try {
     var parsedPlain = JSON.parse(cookieValue);
-    if (Array.isArray(parsedPlain)) {
-      return parsedPlain;
-    }
-  } catch (e) {
-    // ignore and try below
-  }
-
-  // If encoded
+    if (Array.isArray(parsedPlain)) return parsedPlain;
+  } catch (e) {}
   try {
     var decoded = decodeURIComponent(cookieValue);
     var parsedDecoded = JSON.parse(decoded);
     if (Array.isArray(parsedDecoded)) {
-      // Normalise
       saveAssetIds(parsedDecoded);
       return parsedDecoded;
     }
-  } catch (e2) {
-    // empty
-  }
-
+  } catch (e2) {}
   return [];
 }
 
@@ -499,7 +486,6 @@ function saveAssetIds(ids) {
 function toggleAssetId(assetId) {
   var ids = getSavedAssetIds();
   var index = ids.indexOf(assetId);
-
   if (index === -1) {
     ids.push(assetId);
     saveAssetIds(ids);
@@ -512,6 +498,14 @@ function toggleAssetId(assetId) {
 }
 
 // Debug
+function findResultsRoot() {
+  return (
+    document.getElementById("search-results") ||
+    document.getElementById("search-results-grid") ||
+    document.getElementById("search-results-condensed")
+  );
+}
+
 function ensureDebugElement() {
   if (!debugEnabled) return null;
 
@@ -519,11 +513,11 @@ function ensureDebugElement() {
     return debugElement;
   }
 
-  var resultsContainer = document.getElementById("search-results");
-  if (!resultsContainer) return null;
+  var resultsRoot = findResultsRoot();
+  if (!resultsRoot) return null;
 
-  var wrapperParent = resultsContainer.parentNode;
-  if (!wrapperParent) return null;
+  var parent = resultsRoot.parentNode;
+  if (!parent) return null;
 
   var div = document.createElement("div");
   div.id = debugTargetId;
@@ -531,7 +525,7 @@ function ensureDebugElement() {
   div.style.fontSize = "12px";
   div.style.marginBottom = "8px";
 
-  wrapperParent.insertBefore(div, resultsContainer);
+  parent.insertBefore(div, resultsRoot);
 
   debugElement = div;
   return debugElement;
@@ -539,67 +533,55 @@ function ensureDebugElement() {
 
 function updateDebugOutput() {
   if (!debugEnabled) return;
-
   var target = ensureDebugElement();
   if (!target) return;
-
   var ids = getSavedAssetIds();
-  if (ids.length === 0) {
-    target.textContent = "Saved asset IDs: (none)";
-  } else {
-    target.textContent = "Saved asset IDs: " + ids.join(", ");
-  }
+  target.textContent = ids.length ? ("Saved asset IDs: " + ids.join(", ")) : "Saved asset IDs: (none)";
 }
 
 // UI helpers
 function setButtonSavedState(button, isSaved) {
   if (isSaved) {
-    // Saved state
     button.classList.remove("checkbox-blank-black-before");
     button.classList.add("checkbox-checked-black-before", "saved");
     button.textContent = "Saved";
   } else {
-    // Unsaved/default state
     button.classList.remove("checkbox-checked-black-before", "saved");
     button.classList.add("checkbox-blank-black-before");
     button.innerHTML = '<span class="d-none-med">compare</span>';
   }
 }
 
+// Initialise and bind
 document.addEventListener("DOMContentLoaded", function () {
-  var resultsContainer = document.getElementById("search-results");
-  if (!resultsContainer) return;
-
   // debug
   if (debugEnabled) {
     ensureDebugElement();
     updateDebugOutput();
   }
 
-  var buttons = resultsContainer.querySelectorAll(
-    ".js-fbsearch-result-item .js-fbsearch-compare-save"
-  );
-
+  // Initialise all compare/save buttons across any view (list, grid, condensed)
+  var buttons = document.querySelectorAll(".js-fbsearch-result-item .js-fbsearch-compare-save");
   var savedIds = getSavedAssetIds();
 
-  // Initialise buttons
   for (var i = 0; i < buttons.length; i++) {
     var btn = buttons[i];
     var assetId = btn.dataset.courseAssetId;
-
     if (!assetId) continue;
-
-    var isSaved = savedIds.indexOf(assetId) !== -1;
-    setButtonSavedState(btn, isSaved);
-
-    btn.addEventListener("click", function (e) {
-      e.preventDefault();
-
-      var assetId = this.dataset.courseAssetId;
-      if (!assetId) return;
-
-      var nowSaved = toggleAssetId(assetId);
-      setButtonSavedState(this, nowSaved);
-    });
+    setButtonSavedState(btn, savedIds.indexOf(assetId) !== -1);
   }
 });
+
+// Delegate click so it works regardless of view container
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest(".js-fbsearch-result-item .js-fbsearch-compare-save");
+  if (!btn) return;
+
+  e.preventDefault();
+  var assetId = btn.dataset.courseAssetId;
+  if (!assetId) return;
+
+  var nowSaved = toggleAssetId(assetId);
+  setButtonSavedState(btn, nowSaved);
+});
+
