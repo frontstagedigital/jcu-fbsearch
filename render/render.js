@@ -645,7 +645,7 @@ var FeaturedFilters = (function () {
     if (isMulti) {
       b.add('      <section class="search-filter-buttons flex-shrink-0 col-12">');
       b.add('        <div class="flex gap-050 p-t-100 p-l-050 p-r-050 p-b-050">');
-      b.add('          <button class="btn m-b-0 w-100" id="filters-apply">Apply</button>');
+      b.add('          <button class="btn m-b-0 w-100 filters-apply">Apply</button>');
       b.add('          <button class="cancel-button btn secondary-two m-b-0 w-100">Cancel</button>');
       b.add('        </div>');
       b.add('      </section>');
@@ -822,7 +822,7 @@ var FiltersModal = (function () {
 
     b.add('<section class="flex-shrink-0" style="flex-shrink: 0;">');
     b.add('<div class="search-filter-buttons flex p-t-100 bg-sand-4">');
-    b.add('<button id="filters-apply" class="btn m-b-0 w-100 m-100">Apply</button>');
+    b.add('<button class="btn m-b-0 w-100 m-100 filters-apply">Apply</button>');
     b.add('<button id="cancel-filter-button" class="btn secondary-one m-b-0 w-100 m-100">Cancel</button>');
     b.add('</div>');
     b.add('</section>');
