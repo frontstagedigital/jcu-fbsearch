@@ -748,6 +748,8 @@ var FiltersModal = (function () {
     var id = idFromName(facet.name);
     var b = Html.buffer();
 
+    var isMulti = (facet.guessedDisplayType === "CHECKBOX");
+
     b.add('<div class="border-bottom m-b-0 p-b-0">');
     b.add(
       '<button class="flex space-between w-100 btn-no-style plus-black pointer m-b-0 p-b-150 p-t-150" ' +
@@ -768,35 +770,53 @@ var FiltersModal = (function () {
 
       // Parse name from queryParam if available
       var pName = "";
-
       if (qsp) {
         var eq = qsp.indexOf("=");
         if (eq > -1) {
-          // LHS: decode '+' to space and %7C to '|'
           pName = decodeURIComponent(qsp.slice(0, eq).replace(/\+/g, " ").replace(/%7C/gi, "|"));
         }
       }
 
       // Fallback if labels[...].queryParam is missing: infer a namespaced param
       if (!pName) {
-        pName = (facet.paramName && String(facet.paramName)) || ("f." + facet.name + "|" + (facet.paramDataKey || (facet.name === "Study area" ? "studyArea" : facet.name.toLowerCase())));
+        pName = (facet.paramName && String(facet.paramName)) ||
+                ("f." + facet.name + "|" + (facet.paramDataKey || (facet.name === "Study area" ? "studyArea" : facet.name.toLowerCase())));
       }
 
-      // ALWAYS use our simplified RHS token rule (fix for pathways)
+      // ALWAYS use our simplified RHS token rule
       var pValEncoded = valueTokenForFacet(facet.name, v.data, label);
-
       var checked = v.selected ? ' checked="checked"' : "";
 
-      // Use label for display, value token for submission
       b.add('<div class="p-b-075">');
-      b.add('<label class="flex align-start gap-050-column pointer select-label-text">');
-      b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
-      b.add('<div class="js-fbsearch-filters-modal--label-text" data-filter-name="' + Html.esca(label) + '">');
-      b.add('<div class="f-semibold">' + Html.esc(titleCaseLabel(label)) + '</div>');
-      b.add('</div>');
-      b.add('</label>');
-      b.add('</div>');
 
+      if (isMulti) {
+        // Multiselect - render as visible checkbox row
+        b.add('<label class="flex align-start gap-050-column pointer select-label-text">');
+        b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
+        b.add('<div class="js-fbsearch-filters-modal--label-text" data-filter-name="' + Html.esca(label) + '">');
+        b.add('<div class="f-semibold">' + Html.esc(titleCaseLabel(label)) + '</div>');
+        b.add('</div>');
+        b.add('</label>');
+      } else {
+        // Single-select - render text-only option, keep hidden input so Apply works
+        b.add(
+          '<label class="flex align-start gap-050-column pointer select-label-text' + (v.selected ? ' selected' : '') + '"' +
+          ' role="button" tabindex="0"' +
+          ' data-param-name="' + Html.esca(pName) + '"' +
+          ' data-param-value="' + Html.esca(pValEncoded) + '">'
+        );
+
+        // Hidden checkbox keeps existing Apply + collectSelectedPairs flow
+        b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked +
+              ' style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">');
+
+        b.add('<div class="js-fbsearch-filters-modal--label-text" data-filter-name="' + Html.esca(label) + '">');
+        b.add('<div class="f-semibold">' + Html.esc(titleCaseLabel(label)) + '</div>');
+        b.add('</div>');
+        b.add('</label>');
+      }
+
+      b.add('</div>');
     }
 
     b.add('</div></div>');
@@ -833,3 +853,4 @@ var FiltersModal = (function () {
 
   return { render: render };
 })();
+
