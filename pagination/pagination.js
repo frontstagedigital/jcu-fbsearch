@@ -31,11 +31,16 @@ var Pager = (function () {
   }
 
   function pageSize(sum) {
+    var fromApi = Number(sum.numRanks);
+    if (Number.isFinite(fromApi) && fromApi > 0) return Math.floor(fromApi);
+
     var start = sum.currStart || 1;
-    var end = sum.currEnd || (start - 1);
-    var n = (end >= start) ? (end - start + 1) : 10;
-    return n > 0 ? n : 10;
+    var end   = (sum.currEnd != null) ? sum.currEnd : (start - 1);
+    var observed = (end >= start) ? (end - start + 1) : 10;
+
+    return observed > 0 ? observed : 10;
   }
+
 
   function pageForStart(start, size) {
     return Math.floor((Math.max(1, start) - 1) / size) + 1;
