@@ -635,7 +635,8 @@ var FeaturedFilters = (function () {
         b.add('        <label class="pointer d-block">');
         b.add('          <input type="radio" name="' + Html.esc(pair.name) + '" value="' + Html.esc(__valTok) + '"' + checkedAttr + '>');
         b.add('          <span>' + Html.esc(titleCaseLabel(label)) + '</span>');
-        b.add('        </label>');        b.add('      </div>');
+        b.add('        </label>');
+        b.add('      </div>');
       }
     }
 
