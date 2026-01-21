@@ -603,15 +603,18 @@
             if (!banner) return;
             var h1 = banner.querySelector('h1');
             var p = banner.querySelector('p');
+            var q = banner.querySelector('#search-query');
             if (!h1 || !p) return;
 
             if (collection === 'courses') {
                 h1.textContent = 'Discover courses';
                 p.textContent = 'Search undergraduate, postgraduate, research, and short courses across JCU';
+                q.placeholder = 'Type here to find a course';
                 banner.setAttribute('data-search-type', 'courses');
             } else {
                 h1.textContent = 'Discover JCU';
                 p.textContent = 'Search all JCU content - news, services, guides, events and more';
+                q.placeholder = "Type here to find what you're looking for";
                 banner.setAttribute('data-search-type', 'global');
             }
         }
