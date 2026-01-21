@@ -615,13 +615,17 @@
                 h1.textContent = 'Discover courses';
                 p.textContent = 'Search undergraduate, postgraduate, research, and short courses across JCU';
                 q.placeholder = 'Type here to find a course';
+                q.setAttribute('placeholder', 'Type here to find a course');
                 q.setAttribute('aria-label', 'Search courses');
+                console.log('q1:', q);
                 banner.setAttribute('data-search-type', 'courses');
             } else {
                 h1.textContent = 'Discover JCU';
                 p.textContent = 'Search all JCU content - news, services, guides, events and more';
-                q.placeholder = "Type here to find what you're looking for";
+                q.placeholder = 'Type here to find what you\'re looking for';
+                q.setAttribute('placeholder', 'Type here to find what you\'re looking for');
                 q.setAttribute('aria-label', 'Search all JCU');
+                console.log('q2:', q);
                 banner.setAttribute('data-search-type', 'global');
             }
         }
