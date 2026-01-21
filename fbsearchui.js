@@ -13,26 +13,46 @@
         return encodeURIComponent(String(name)).replace(/%20/g, "+");
     }
 
-    // Propagate a checkbox state to all duplicates with same name+value (featured, modal, etc.)
-    function setAllByNameValue(name, value, checked) {
+    // Propagate a checkbox state to all duplicates with same name+value
+    function syncCheckboxByNameValue(name, value, checked) {
         var sel = 'input[type="checkbox"][name="' + CSS.escape(name) + '"][value="' + CSS.escape(value) + '"]';
-        qsa(sel).forEach(function (el) {
-            el.checked = checked;
-        });
+        qsa(sel).forEach(function (el) { el.checked = checked; });
+    }
+
+    // Set exactly one radio checked across *all* duplicates with the same name
+    function syncRadioGroup(name, value) {
+        var sel = 'input[type="radio"][name="' + CSS.escape(name) + '"]';
+        qsa(sel).forEach(function (el) { el.checked = (el.value === value); });
+    }
+
+    // Back-compat alias used by existing calls that were checkbox-only
+    function setAllByNameValue(name, value, checked) {
+        syncCheckboxByNameValue(name, value, checked);
     }
 
     // Build a de-duplicated list of [name, value] for all checked checkboxes
     function collectSelectedPairs() {
         var out = [];
         var seen = Object.create ? Object.create(null) : {};
+
+        // checked checkboxes
         qsa('input[type="checkbox"][name][value]:checked').forEach(function (el) {
-            var name = el.getAttribute('name') || "";
-            var value = el.getAttribute('value') || "";
-            var key = name + "\u001F" + value;
-            if (seen[key]) return;
-            seen[key] = 1;
-            out.push([name, value]);
+            var key = (el.name || "") + "\u001F" + (el.value || "");
+            if (!seen[key]) {
+                seen[key] = 1;
+                out.push([el.name || "", el.value || ""]);
+            }
         });
+
+        // checked radios
+        qsa('input[type="radio"][name][value]:checked').forEach(function (el) {
+            var key = (el.name || "") + "\u001F" + (el.value || "");
+            if (!seen[key]) {
+                seen[key] = 1;
+                out.push([el.name || "", el.value || ""]);
+            }
+        });
+
         return out;
     }
 
@@ -157,12 +177,14 @@
 
     // --- helper for single-select facets (uncheck all for name, then check one and sync duplicates) ---
     function selectSingleByNameValue(name, value) {
-        // uncheck all options for this facet
+        // Uncheck all checkboxes for this facet
         qsa('input[type="checkbox"][name="' + CSS.escape(name) + '"]').forEach(function (el) { el.checked = false; });
-        // check the chosen value (if present) and sync to duplicates
-        var chosen = document.querySelector('input[type="checkbox"][name="' + CSS.escape(name) + '"][value="' + CSS.escape(value) + '"]');
-        if (chosen) chosen.checked = true;
-        setAllByNameValue(name, value, true);
+
+        // Radios: enforce exactly one across all duplicates
+        syncRadioGroup(name, value);
+
+        // If UI still has checkbox duplicates for this facet value, keep them in sync too
+        syncCheckboxByNameValue(name, value, true);
     }
 
     // ------ Event wiring ------
@@ -171,8 +193,15 @@
     document.addEventListener('change', function (e) {
         var t = e.target;
         if (!t || !t.matches) return;
+
         if (t.matches('input[type="checkbox"][name][value]')) {
-            setAllByNameValue(t.name, t.value, t.checked);
+            syncCheckboxByNameValue(t.name, t.value, t.checked);
+            return;
+        }
+        if (t.matches('input[type="radio"][name][value]')) {
+            // When a radio is changed anywhere (featured or modal), reflect it everywhere
+            syncRadioGroup(t.name, t.value);
+            return;
         }
     });
 
@@ -229,21 +258,33 @@
     }
 
     function handleSingleSelectActivate(targetEl) {
-        var row = targetEl && (targetEl.closest('.js-fbsearch-featured-facet.singleselect [data-param-name][data-param-value]') ||
-                               targetEl.closest('#filters-panel [role="button"][data-param-name][data-param-value]'));
+        // Featured row with legacy data attributes OR a container holding a radio
+        var row =
+            targetEl && (
+                targetEl.closest('.js-fbsearch-featured-facet.singleselect [data-param-name][data-param-value]') ||
+                targetEl.closest('.js-fbsearch-featured-facet.singleselect .select-label-text')
+            );
         if (!row) return false;
 
-        var pname = row.getAttribute('data-param-name') || '';
-        var pval  = row.getAttribute('data-param-value') || '';
-        if (!pname) return false;
+        // Prefer explicit data attributes if present
+        var pname = row.getAttribute('data-param-name');
+        var pval = row.getAttribute('data-param-value');
 
-        // reflect in DOM so UI stays consistent
+        // Otherwise look for an embedded radio
+        if (!pname || !pval) {
+            var r = row.querySelector('input[type="radio"][name][value]');
+            if (!r) return false;
+            pname = r.name;
+            pval = r.value;
+        }
+
+        // Reflect in DOM
         selectSingleByNameValue(pname, pval);
 
-        // rebuild URL with preserved query/sort/ui_view
+        // Navigate immediately for featured single-selects
         var pairs = collectSelectedPairs();
-        var qs    = buildQueryString(pairs);
-        var base  = window.location.origin + window.location.pathname;
+        var qs = buildQueryString(pairs);
+        var base = window.location.origin + window.location.pathname;
         window.location.href = base + qs;
         return true;
     }
