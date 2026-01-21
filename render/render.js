@@ -804,18 +804,9 @@ var FiltersModal = (function () {
         b.add('</div>');
         b.add('</label>');
       } else {
-        // Single-select - render text-only option, keep hidden input so Apply works
-        b.add(
-          '<label class="flex align-start gap-050-column pointer select-label-text' + (v.selected ? ' selected' : '') + '"' +
-          ' role="button" tabindex="0"' +
-          ' data-param-name="' + Html.esca(pName) + '"' +
-          ' data-param-value="' + Html.esca(pValEncoded) + '">'
-        );
-
-        // Hidden checkbox keeps existing Apply + collectSelectedPairs flow
-        b.add('<input type="checkbox" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked +
-              ' style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">');
-
+        // Single-select - renderas radio
+        b.add('<label class="flex align-start gap-050-column pointer select-label-text">');
+        b.add('<input type="radio" name="' + Html.esca(pName) + '" value="' + Html.esca(pValEncoded) + '"' + checked + '>');
         b.add('<div class="js-fbsearch-filters-modal--label-text" data-filter-name="' + Html.esca(label) + '">');
         b.add('<div class="f-semibold">' + Html.esc(titleCaseLabel(label)) + '</div>');
         b.add('</div>');
