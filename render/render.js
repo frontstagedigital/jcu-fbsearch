@@ -719,7 +719,9 @@ var HeaderRow = (function () {
     if (!chips.length) return "";
 
     var b = Html.buffer();
-    b.add('<div id="selected-filters" class="columns flex-nowrap align-center gap-050-column">');
+    b.add('<div id="selected-filters" class="p-b-250">');
+    b.add('<p class="f-uppercase f-overline m-b-050">Selected filters</p>');
+    b.add('<div class="columns align-center gap-050">');
     for (var k = 0; k < chips.length; k++) {
       var c = chips[k];
       b.add(
@@ -731,6 +733,7 @@ var HeaderRow = (function () {
       );
     }
     b.add('<span class="f-underline pointer">Clear all</span>');
+    b.add('</div>');
     b.add('</div>');
     return b.toString();
   }
