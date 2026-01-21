@@ -602,9 +602,9 @@
         function updateBannerCopy(collection) {
             if (!banner) return;
             var h1 = banner.querySelector('h1');
-            var p = banner.querySelector('p');
-            var q = banner.getElementById('search-query');
-            if (!h1 || !p) return;
+            var p  = banner.querySelector('p');
+            var q  = banner.querySelector('#search-query'); 
+            if (!h1 || !p || !q) return;
 
             if (collection === 'courses') {
                 h1.textContent = 'Discover courses';
