@@ -551,14 +551,22 @@
             if (!banner) return;
             var h1 = banner.querySelector('h1');
             var p = banner.querySelector('p');
+            var q  = banner.querySelector('input[name="query"]'); 
+
             if (!h1 || !p) return;
             if (collection === 'courses') {
                 h1.textContent = 'Discover courses';
                 p.textContent = 'Search undergraduate, postgraduate, research, and short courses across JCU';
+                q.placeholder = 'Type here to find a course';
+                q.setAttribute('placeholder', 'Type here to find a course');
+                q.setAttribute('aria-label', 'Search courses');                
                 banner.setAttribute('data-search-type', 'courses');
             } else {
                 h1.textContent = 'Discover JCU';
                 p.textContent = 'Search all JCU content - news, services, guides, events and more';
+                q.placeholder = 'Type here to find what you\'re looking for';
+                q.setAttribute('placeholder', 'Type here to find what you\'re looking for');
+                q.setAttribute('aria-label', 'Search all JCU');                
                 banner.setAttribute('data-search-type', 'global');
             }
         }
@@ -617,7 +625,6 @@
                 q.placeholder = 'Type here to find a course';
                 q.setAttribute('placeholder', 'Type here to find a course');
                 q.setAttribute('aria-label', 'Search courses');
-                console.log('q1:', q);
                 banner.setAttribute('data-search-type', 'courses');
             } else {
                 h1.textContent = 'Discover JCU';
@@ -625,7 +632,6 @@
                 q.placeholder = 'Type here to find what you\'re looking for';
                 q.setAttribute('placeholder', 'Type here to find what you\'re looking for');
                 q.setAttribute('aria-label', 'Search all JCU');
-                console.log('q2:', q);
                 banner.setAttribute('data-search-type', 'global');
             }
         }
@@ -635,6 +641,7 @@
             updateBannerCopy(getActiveCollection());
         }
 
+        // click handler: after setting the new active state, call sync
         switcher.addEventListener('click', function (e) {
             var btn = e.target.closest('.js-search-collection-switcher-button');
             if (!btn || !switcher.contains(btn)) return;
@@ -643,21 +650,33 @@
             if (btn.hasAttribute('active')) return;
 
             // clear existing active state
-            buttons.forEach(function (b) { b.removeAttribute('active'); });
+            buttons.forEach(function (b) {
+                b.removeAttribute('active');
+            });
             // set active on clicked
             btn.setAttribute('active', '');
 
             // update form + banner together
-            updateFormAction();
-
-            // run after any other placeholder changers bound to the same click
-            setTimeout(function () {
-                updateBannerCopy(getActiveCollection());
-            }, 0);
+            syncUiToCollection();
         });
 
         // initial sync to match whatever is marked active in the DOM
         syncUiToCollection();
+
+        switcher.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-search-collection-switcher-button');
+            if (!btn || !switcher.contains(btn)) return;
+
+            // clear existing active state
+            buttons.forEach(function (b) {
+                b.removeAttribute('active');
+            });
+
+            // set active on clicked
+            btn.setAttribute('active', '');
+
+            updateFormAction();
+        });
 
         updateFormAction();
     });
