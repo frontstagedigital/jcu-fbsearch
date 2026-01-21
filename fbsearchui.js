@@ -635,7 +635,6 @@
             updateBannerCopy(getActiveCollection());
         }
 
-        // click handler: after setting the new active state, call sync
         switcher.addEventListener('click', function (e) {
             var btn = e.target.closest('.js-search-collection-switcher-button');
             if (!btn || !switcher.contains(btn)) return;
@@ -644,19 +643,22 @@
             if (btn.hasAttribute('active')) return;
 
             // clear existing active state
-            buttons.forEach(function (b) {
-                b.removeAttribute('active');
-            });
+            buttons.forEach(function (b) { b.removeAttribute('active'); });
             // set active on clicked
             btn.setAttribute('active', '');
 
             // update form + banner together
-            syncUiToCollection();
             updateFormAction();
+
+            // run after any other placeholder changers bound to the same click
+            setTimeout(function () {
+                updateBannerCopy(getActiveCollection());
+            }, 0);
         });
 
         // initial sync to match whatever is marked active in the DOM
         syncUiToCollection();
+
         updateFormAction();
     });
 
