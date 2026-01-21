@@ -645,14 +645,14 @@ var FeaturedFilters = (function () {
     }
 
 
-    if (isMulti) {
+    // if (isMulti) {
       b.add('      <section class="search-filter-buttons flex-shrink-0 col-12">');
       b.add('        <div class="flex gap-050 p-t-100 p-l-050 p-r-050 p-b-050">');
       b.add('          <button class="btn m-b-0 w-100 filters-apply">Apply</button>');
       b.add('          <button class="cancel-button btn secondary-two m-b-0 w-100">Cancel</button>');
       b.add('        </div>');
       b.add('      </section>');
-    }
+    // }
 
     b.add('    </div>'); // inner
     b.add('  </div>');   // body
