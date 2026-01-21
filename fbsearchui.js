@@ -603,7 +603,7 @@
             if (!banner) return;
             var h1 = banner.querySelector('h1');
             var p = banner.querySelector('p');
-            var q = banner.querySelector('#search-query');
+            var q = banner.getElementById('search-query');
             if (!h1 || !p) return;
 
             if (collection === 'courses') {
