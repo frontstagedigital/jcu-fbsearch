@@ -652,26 +652,11 @@
 
             // update form + banner together
             syncUiToCollection();
+            updateFormAction();
         });
 
         // initial sync to match whatever is marked active in the DOM
         syncUiToCollection();
-
-        switcher.addEventListener('click', function (e) {
-            var btn = e.target.closest('.js-search-collection-switcher-button');
-            if (!btn || !switcher.contains(btn)) return;
-
-            // clear existing active state
-            buttons.forEach(function (b) {
-                b.removeAttribute('active');
-            });
-
-            // set active on clicked
-            btn.setAttribute('active', '');
-
-            updateFormAction();
-        });
-
         updateFormAction();
     });
 
