@@ -604,6 +604,11 @@
             var h1 = banner.querySelector('h1');
             var p  = banner.querySelector('p');
             var q  = banner.querySelector('input[name="query"]'); 
+
+            console.log('p:', p);
+            console.log('q:', q);
+            console.log('readyState:', document.readyState);
+
             if (!h1 || !p || !q) return;
 
             if (collection === 'courses') {
