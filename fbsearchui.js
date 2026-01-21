@@ -19,6 +19,12 @@
         qsa(sel).forEach(function (el) { el.checked = checked; });
     }
 
+    // uncheck a specific radio value everywhere for a facet
+    function clearRadioByNameValue(name, value) {
+        var sel = 'input[type="radio"][name="' + CSS.escape(name) + '"][value="' + CSS.escape(value) + '"]';
+        qsa(sel).forEach(function (el) { el.checked = false; });
+    }
+
     // Set exactly one radio checked across *all* duplicates with the same name
     function syncRadioGroup(name, value) {
         var sel = 'input[type="radio"][name="' + CSS.escape(name) + '"]';
@@ -172,7 +178,9 @@
 
     // Uncheck all matching inputs across DOM for a chip removal, then apply
     function uncheckAllByNameValue(name, value) {
-        setAllByNameValue(name, value, false);
+        //setAllByNameValue(name, value, false);
+        syncCheckboxByNameValue(name, value, false);
+        clearRadioByNameValue(name, value);
     }
 
     // --- helper for single-select facets (uncheck all for name, then check one and sync duplicates) ---
@@ -244,6 +252,9 @@
         if (t && t.closest && t.closest('#selected-filters .f-underline.pointer')) {
             e.preventDefault();
             qsa('input[type="checkbox"][name][value]:checked').forEach(function (el) {
+                el.checked = false;
+            });
+            qsa('input[type="radio"][name][value]:checked').forEach(function (el) {
                 el.checked = false;
             });
             applyFilters();
