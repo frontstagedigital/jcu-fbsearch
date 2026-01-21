@@ -37,25 +37,33 @@
     }
 
     // Build a de-duplicated list of [name, value] for all checked checkboxes
+    var IGNORED_PARAM_NAMES = { searchRadios: 1 };
+
     function collectSelectedPairs() {
         var out = [];
         var seen = Object.create ? Object.create(null) : {};
 
-        // checked checkboxes
+        // checkboxes
         qsa('input[type="checkbox"][name][value]:checked').forEach(function (el) {
-            var key = (el.name || "") + "\u001F" + (el.value || "");
+            var n = el.name || "";
+            if (IGNORED_PARAM_NAMES[n]) return;
+            var v = el.value || "";
+            var key = n + "\u001F" + v;
             if (!seen[key]) {
                 seen[key] = 1;
-                out.push([el.name || "", el.value || ""]);
+                out.push([n, v]);
             }
         });
 
-        // checked radios
+        // radios
         qsa('input[type="radio"][name][value]:checked').forEach(function (el) {
-            var key = (el.name || "") + "\u001F" + (el.value || "");
+            var n = el.name || "";
+            if (IGNORED_PARAM_NAMES[n]) return; // skip searchRadios
+            var v = el.value || "";
+            var key = n + "\u001F" + v;
             if (!seen[key]) {
                 seen[key] = 1;
-                out.push([el.name || "", el.value || ""]);
+                out.push([n, v]);
             }
         });
 
