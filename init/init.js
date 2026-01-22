@@ -4,7 +4,7 @@ var FBSearch = (function () {
     var html = "";
     try {
       var api = FB.init(rest);
-      if (!FB.valid(api)) return '<div class="' + CLASSNAMES.alert + '">Invalid API response structure.</div>';
+      if (!FB.valid(api)) return '<!-- <div class="' + CLASSNAMES.alert + '">Invalid API response structure.</div> -->';
       if (!FB.totals(api)) return Zero.render(api, G);
       var sd = SearchData.build(api, G);
       if (G && G.debug) html += Diagnostics.render(sd, api, G);
