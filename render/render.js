@@ -335,8 +335,14 @@ var Results = (function () {
 
   function description150(result) {
     var md = (result && result.listMetadata) || {};
-    var c = firstNonEmptyArray(md.c);
-    return truncate(c.length ? c[0] : "", 150);
+    var cArr = firstNonEmptyArray(md.c);
+    var fromC = cArr && cArr.length ? String(cArr[0]) : "";
+
+    var text = fromC && fromC.trim()
+      ? fromC
+      : (result && typeof result.summary === 'string' ? result.summary : '');
+
+    return truncate(String(text || ''), 150);
   }
 
   // ---------- views ----------
