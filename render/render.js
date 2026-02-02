@@ -257,6 +257,10 @@ var Results = (function () {
     var md = (result && result.listMetadata) || {};
     var pageNames = firstNonEmptyArray(md.pageName, md.pagename, md.PageName);
     var fromMeta = pageNames.length ? String(pageNames[0]).trim() : "";
+    var pageType = md.pageType || "";
+    if (pageType.toLowerCase() === "page_redirect") {
+      link = md.redirectUrl;
+    }
 
     // fall back to result.title, stripping the site suffix if present
     var fallback = (result.title || "Untitled").replace(/ - JCU Australia$/, "");
