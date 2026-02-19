@@ -847,7 +847,15 @@ var FiltersModal = (function () {
     b.add('<section id="filters-scrollable-section" class="overflow_y-auto overflow_x-h flex-1">');
     for (var i = 0; i < sd.facets.length; i++) {
       var facet = sd.facets[i];
-      if (facet && String(facet.name || "").toLowerCase() === "student-type") continue;
+      if (typeof console !== "undefined" && console.log) {
+        console.log("[FiltersModal.render] facet.name:", facet && facet.name);
+      }
+      if (facet && String(facet.name || "").toLowerCase() === "student-type") {
+        if (typeof console !== "undefined" && console.log) {
+          console.log("[FiltersModal.render] skipping facet:", facet.name);
+        }
+        continue;
+      }
       b.add(section(facet));
     }
     b.add('</section>');
