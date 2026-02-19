@@ -850,10 +850,7 @@ var FiltersModal = (function () {
       if (typeof console !== "undefined" && console.log) {
         console.log("[FiltersModal.render] facet.name:", facet && facet.name);
       }
-      if (facet && String(facet.name || "").toLowerCase() === "student-type") {
-        if (typeof console !== "undefined" && console.log) {
-          console.log("[FiltersModal.render] skipping facet:", facet.name);
-        }
+      if (facet && String(facet.name || "").toLowerCase() === "student type") {
         continue;
       }
       b.add(section(facet));
