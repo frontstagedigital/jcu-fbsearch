@@ -845,7 +845,11 @@ var FiltersModal = (function () {
     b.add('</section>');
 
     b.add('<section id="filters-scrollable-section" class="overflow_y-auto overflow_x-h flex-1">');
-    for (var i = 0; i < sd.facets.length; i++) b.add(section(sd.facets[i]));
+    for (var i = 0; i < sd.facets.length; i++) {
+      var facet = sd.facets[i];
+      if (facet && String(facet.name || "").toLowerCase() === "student-type") continue;
+      b.add(section(facet));
+    }
     b.add('</section>');
 
     b.add('<section class="flex-shrink-0" style="flex-shrink: 0;">');
