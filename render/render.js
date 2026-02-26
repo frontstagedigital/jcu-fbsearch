@@ -1,4 +1,3 @@
-
 // simple title case for UI labels - preserves acronyms, keeps small words lower-case mid-phrase
 function titleCaseLabel(str) {
   var STOP = {
@@ -573,11 +572,14 @@ var FeaturedFilters = (function () {
     var facetSlug = slug(facetName);
     var isMulti = (facet.guessedDisplayType === "CHECKBOX");
     var b = Html.buffer();
-
+    var isStudentType = facetSlug === "student-type";
     // wrapper - add "multiselect" class only for checkbox facets
+
     b.add(
       '<div class="' + (isMulti ? 'multiselect ' : 'singleselect ') +
-      'no-select select-wrapper search-controls col-12 col-6-med col-2-lrg js-fbsearch-featured-facet" data-featured-facet="' +
+      'no-select select-wrapper search-controls ' +
+      (isStudentType ? '' : ' d-none-lrg') +
+      ' js-fbsearch-featured-facet" data-featured-facet="' +
       Html.esc(facetName) + '">'
     );
 
@@ -679,7 +681,7 @@ var FeaturedFilters = (function () {
     for (var i = 0; i < sd.facets.length; i++) byName[sd.facets[i].name] = sd.facets[i];
 
     var b = Html.buffer();
-    b.add('<div class="columns d-none-lrg">');
+    b.add('<div class="flex gap-100 w-100-sm">');
     for (var k = 0; k < names.length; k++) {
       var fname = names[k];
       if (byName[fname]) b.add(block(byName[fname]));
@@ -697,7 +699,7 @@ var HeaderRow = (function () {
     if (G && G.hideFacets) return "";
 
     var b = Html.buffer();
-    b.add('<div class="flex space-apart p-b-250">');
+    b.add('<div class="flex space-between p-b-250 flex-wrap gap-100">');
     b.add(FeaturedFilters.render(sd, G));
     b.add('<div id="all-filters-button" aria-expanded="false" class="search-controls w-100-sm btn secondary-one flex gap-100 space-between pointer align-center tune-black">');
     b.add('<div class="f-display-4 f-bold">All Filters</div>');
@@ -845,16 +847,7 @@ var FiltersModal = (function () {
     b.add('</section>');
 
     b.add('<section id="filters-scrollable-section" class="overflow_y-auto overflow_x-h flex-1">');
-    for (var i = 0; i < sd.facets.length; i++) {
-      var facet = sd.facets[i];
-      if (typeof console !== "undefined" && console.log) {
-        console.log("[FiltersModal.render] facet.name:", facet && facet.name);
-      }
-      if (facet && String(facet.name || "").toLowerCase() === "student type") {
-        continue;
-      }
-      b.add(section(facet));
-    }
+    for (var i = 0; i < sd.facets.length; i++) b.add(section(sd.facets[i]));
     b.add('</section>');
 
     b.add('<section class="flex-shrink-0" style="flex-shrink: 0;">');
@@ -870,4 +863,3 @@ var FiltersModal = (function () {
 
   return { render: render };
 })();
-
