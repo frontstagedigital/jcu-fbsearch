@@ -560,7 +560,7 @@
             copy.studyLevelPathways
         );
 
-        var form = document.getElementById('bannerCourseSearchForm');
+        var form = document.getElementById('bannerSearchForm');
         var switcher = document.querySelector('.js-search-collection-switcher');
         if (!form || !switcher) return;
 
@@ -621,6 +621,8 @@
                 q.setAttribute('placeholder', 'Type here to find a course');
                 q.setAttribute('aria-label', 'Search courses');                
                 banner.setAttribute('data-search-type', 'courses');
+                form.classList.remove('bannerSearchForm--global');
+                form.classList.add('bannerSearchForm--courses');
             } else {
                 h1.textContent = 'Discover JCU';
                 p.textContent = 'Search all JCU content - news, services, guides, events and more';
@@ -628,6 +630,8 @@
                 q.setAttribute('placeholder', 'Type here to find what you\'re looking for');
                 q.setAttribute('aria-label', 'Search all JCU');                
                 banner.setAttribute('data-search-type', 'global');
+                form.classList.remove('bannerSearchForm--courses');
+                form.classList.add('bannerSearchForm--global');
             }
         }
 
@@ -686,6 +690,8 @@
                 q.setAttribute('placeholder', 'Type here to find a course');
                 q.setAttribute('aria-label', 'Search courses');
                 banner.setAttribute('data-search-type', 'courses');
+                form.classList.remove('bannerSearchForm--global');
+                form.classList.add('bannerSearchForm--courses');
             } else {
                 h1.textContent = 'Discover JCU';
                 p.textContent = 'Search all JCU content - news, services, guides, events and more';
@@ -693,6 +699,8 @@
                 q.setAttribute('placeholder', 'Type here to find what you\'re looking for');
                 q.setAttribute('aria-label', 'Search all JCU');
                 banner.setAttribute('data-search-type', 'global');
+                form.classList.remove('bannerSearchForm--courses');
+                form.classList.add('bannerSearchForm--global');
             }
         }
 
