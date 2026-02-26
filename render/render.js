@@ -1,3 +1,4 @@
+
 // simple title case for UI labels - preserves acronyms, keeps small words lower-case mid-phrase
 function titleCaseLabel(str) {
   var STOP = {
@@ -863,3 +864,4 @@ var FiltersModal = (function () {
 
   return { render: render };
 })();
+
