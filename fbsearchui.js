@@ -752,7 +752,7 @@
     // Config for compare/save functionality with cookie
     var compareCookieName = "jcu_saved_courses";
     var compareCookieDomain = ".www.jcu.edu.au";
-    var debugEnabled = true; // Toggle debug
+    var debugEnabled = false; // Toggle debug
     var debugTargetId = "compare-debug"; // debug div output
 
     var debugElement = null;
