@@ -165,7 +165,7 @@ var CountBar = (function () {
     var b = Html.buffer();
     b.add('<div class="columns space-between align-center js-fbsearch-countbar">');
     b.add('<div id="search-result-count" class="searchresults__count f-bold">');
-    b.add('Showing <span id="search-page-start">' + currentStart + '</span> - <span id="search-page-end">' + currentEnd + '</span> of <span id="search-total-matching">' + total + '</span> results');
+    b.add('Showing <span id="search-page-start">' + currentStart + '</span> - <span id="search-page-end">' + currentEnd + '</span> of <span id="search-total-matching">' + total + '</span> results for "<span id="search-query-term">' + Html.esc(Safe.get(api, "response.resultPacket.query", "")) + '</span>"');
     b.add('</div>');
     b.add('<div class="flex gap-100 flex-wrap">');
     b.add(selectBlock('Sort by', 'sort', currentSort, sortOptions));
