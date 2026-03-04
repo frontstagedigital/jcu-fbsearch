@@ -37,6 +37,24 @@ function encodeForParam(val) {
   return encodeURIComponent(String(val == null ? "" : val)).replace(/%20/g, "+");
 }
 
+function appendInternationalParam(url) {
+  var u = String(url == null ? "" : url);
+  if (!u || u === "#") return u;
+
+  var hash = "";
+  var hashIdx = u.indexOf("#");
+  if (hashIdx > -1) {
+    hash = u.slice(hashIdx);
+    u = u.slice(0, hashIdx);
+  }
+
+  if (/(?:\?|&)international(?:[=&]|$)/.test(u)) {
+    return u + hash;
+  }
+
+  return (u.indexOf("?") > -1 ? (u + "&international") : (u + "?international")) + hash;
+}
+
 // value token rule: use label for all facets, except "Student type" which uses data if present
 function valueTokenForFacet(facetName, data, label) {
   var name = String(facetName || "");
@@ -271,6 +289,10 @@ var Results = (function () {
 
     // fall back to result.title, stripping the site suffix if present
     var fallback = (result.title || "Untitled").replace(/ - JCU Australia$/, "");
+
+    if (intOnlyFlag === true) {
+      link = appendInternationalParam(link);
+    }
 
     return {
       link: link,
@@ -718,6 +740,7 @@ var HeaderRow = (function () {
   }
 
   function selected(sd) {
+    intOnlyFlag = false;
     var chips = [];
     for (var i = 0; i < sd.facets.length; i++) {
       var facet = sd.facets[i];
