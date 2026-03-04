@@ -1,4 +1,5 @@
 
+let intOnlyFlag = false;
 // simple title case for UI labels - preserves acronyms, keeps small words lower-case mid-phrase
 function titleCaseLabel(str) {
   var STOP = {
@@ -303,8 +304,10 @@ var Results = (function () {
     var md = (result && result.listMetadata) || {};
     var atar = firstNonEmptyArray(md.courseAtarCutoff);
     var durations = firstNonEmptyArray(md.courseDuration);
-    var locs = firstNonEmptyArray(md.campus, md.campusInt, md.campusDom);
-    var months = firstNonEmptyArray(md.commencingDate);
+    var campus = (intOnlyFlag === true) ? md.campusInt : md.campus;
+    var locs = firstNonEmptyArray(campus);
+    var commencingDate = (intOnlyFlag === true) ? md.commencingDateInt : md.commencingDate;
+    var months = firstNonEmptyArray(commencingDate);
 
     // de-duped pipe-join for durations
     var durJoined = (function (arr) {
@@ -741,10 +744,16 @@ var HeaderRow = (function () {
     b.add('<div class="columns align-center gap-050">');
     for (var k = 0; k < chips.length; k++) {
       var c = chips[k];
+      var escName = Html.esca(c.name);
+      var escValue = Html.esca(c.value);
+
+      if (escName === "f.Student type|courseAvailability" && escValue === "int_only") {
+        intOnlyFlag = true;
+      }
       b.add(
         '<span class="btn special-search round-med border-none h-fc p-050 flex space-between align-center plus-black active"' +
-        ' data-remove-name="' + Html.esca(c.name) + '"' +
-        ' data-remove-value="' + Html.esca(c.value) + '">' +
+        ' data-remove-name="' + escName + '"' +
+        ' data-remove-value="' + escValue + '">' +
         Html.esc(titleCaseLabel(c.label)) +
         '</span>'
       );
