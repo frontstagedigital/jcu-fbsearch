@@ -350,7 +350,7 @@ var Results = (function () {
     })(durations);
 
     var blocks = [];
-    if (atar.length) {
+    if (atar.length && intOnlyFlag === false) {
       blocks.push({ cls: "target-black-before", text: "ATAR " + atar[0] });
     }
     var locJoined = uniqJoined(locs);
