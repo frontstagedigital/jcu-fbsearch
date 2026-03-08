@@ -370,7 +370,9 @@ var Results = (function () {
 
   function description150(result) {
     var md = (result && result.listMetadata) || {};
-    var salesPitch = firstNonEmptyArray((intOnlyFlag === true) ? md.salesPitchInternational : md.salesPitchDomestic);
+    var salesPitch = (intOnlyFlag === true) 
+      ? firstNonEmptyArray(md.salesPitchInternational, md.salesPitchDomestic)
+      : firstNonEmptyArray(md.salesPitchDomestic);
     var cArr = firstNonEmptyArray(md.c);
     var fromC = salesPitch.length ? String(salesPitch[0]).trim() : (cArr.length ? String(cArr[0]).trim() : "");
 
